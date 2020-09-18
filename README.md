@@ -3,7 +3,11 @@
 FASTENER is a state-of-the-art feature selecton algorithm for remote sensing. It has been develped for the use case of crop/land-cover classification based on Sentinel-II data.
 
 ## Users' Manual
-    TODO: Gal
+Basic documentation is available within the code.
+
+## Future Work
+
+* Create PyPI module
 
 ## Related Publications
 
