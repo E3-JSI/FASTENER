@@ -9,24 +9,32 @@ Basic documentation is available within the code.
 A simple workflow is described below.
 0) Includes
 ```python
+# import dataset
 from sklearn.datasets import load_breast_cancer
+
+# import preprocessing tools
 from sklearn import preprocessing
-from src.random_utils import shuffle
+import numpy as np
+import pandas as pd
+
+# import learning/evaluation
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import f1_score
 from sklearn.model_selection import cross_val_score
+
+# typing
 from typing import Dict, List, Callable, Any, Tuple, Optional, \
     Counter as CounterType, Set
+
+# FASTENER specific imports
+from src.random_utils import shuffle
+from src import random_utils
 from src.item import Item, EvalItem, Result, Population, flatten_population, FitnessFunction, \
     Genes, EvalItem, RandomFlipMutationStrategy, RandomEveryoneWithEveryone, \
     IntersectionMating, UnionMating, IntersectionMatingWithInformationGain, \
     IntersectionMatingWithWeightedRandomInformationGain, UnevaluatedPopulation, \
     MatingStrategy, MutationStrategy, MatingSelectionStrategy
-
-from src import random_utils
 from src import fastener
-import numpy as np
-import pandas as pd
 ```
 
 1) Prepare data
