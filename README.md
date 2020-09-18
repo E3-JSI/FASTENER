@@ -15,7 +15,7 @@ Basic documentation is available within the code.
 * Prepare example notebooks
 * Create unit tests
 
-## Related Publications
+## Publications
 
 If you use the algorithm, please cite the following paper:
 
@@ -31,4 +31,4 @@ __Abstract__:
 
 
 ### Acknowledgements
-This research was funded by European Union's Horizon 2020 programme project PerceptiveSentinel (Research and Innovation) grant number 776115, project NAIADES (Innovation Action) grant number 820985.
+This research was funded by European Union's Horizon 2020 programme project PerceptiveSentinel (Research and Innovation) grant number [776115](https://cordis.europa.eu/project/id/776115), project NAIADES (Innovation Action) grant number [820985](https://cordis.europa.eu/project/id/820985).
