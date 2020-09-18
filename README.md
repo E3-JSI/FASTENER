@@ -3,6 +3,18 @@ ___FeAture SelecTion ENabled by EntRopy___ for Python
 
 FASTENER is a state-of-the-art feature selecton algorithm for remote sensing, but performs well also on several other data sets. It is most suitable for large datasets with several hundreds of features. It has been develped for the use case of crop/land-cover classification based on Sentinel-II data.
 
+## Prerequisites
+For further details see `requirements.txt`.
+
+* Python 3.6+
+* numpy (1.18-1+)
+* scipy (1.4.1+)
+* typed-ast (1.4.1.+)
+* scikit-learn (0.22.2+)
+* typing-extensions (3.7.4.1+)
+* For example:
+    * Pandas
+
 ## Users' Manual
 Basic documentation is available within the code.
 
