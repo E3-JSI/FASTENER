@@ -1,3 +1,6 @@
+'''
+'''
+
 import math
 import os
 import pickle
@@ -23,6 +26,27 @@ Front = Dict[int, EvalItem]
 
 @dataclass
 class LogData:
+    '''Represents a object to be saved into log
+    
+    Contains data about each generation that will be saved into log.
+
+    Attributes:
+        generation: An integer representing the generation the log is
+            about.
+        population: A Population object which contains population of
+            current generation.
+        front: A dictionary holding the best Item (from the
+            population) object for each number of selected features.
+        mated: Population after mating.
+        mutated: Population after mutation.
+        cache_counter: TODO
+        cache_data: A dictionary that saves score for every set of
+            genes calculated.
+        random_step: TODO
+        timestamp_step: A float representing the time when the object
+            was created.
+
+    '''
     generation: int
     population: Population
     front: Front
@@ -42,6 +66,15 @@ class LogData:
         return {num: item[0] for num, item in cache_data.items()}
 
     def dump_log(self, config: "Config") -> None:
+        '''Saves self into a pickle file.
+
+        Saves the instance of the current object into output folder
+        as a pickle file.
+
+        Args:
+            config: A Config object in which the output folder name is
+                stored.
+        '''
         pickle.dump(
             self,
             open(os.path.join(
@@ -53,6 +86,23 @@ class LogData:
 
 @dataclass
 class Config:
+    '''Configuration parameters
+
+    An object that stores configuration parameters of the algorithm.
+    
+    Attributes:
+        output_folder: A string containing the name of the output
+            folder for log.
+        rendom_seed: TODO
+        number_of_rounds: An integer representing the number of rounds
+            (generations) of the algorithm.
+        max_bucket_size: An  integer representing the maximum number
+            of items with the same number of features.
+        reset_to_pareto_rounds: An integer which represents the
+            interval when the population is set to front.
+        cache_fitness_function: A boolean determining if evaluation
+            results will be cached
+    '''
     output_folder: str
     random_seed: int
     number_of_rounds: int = 1000  # Number of round of genetic algorithm
@@ -62,6 +112,12 @@ class Config:
     cache_fitness_function: bool = True
 
     def __post_init__(self) -> None:
+        '''Sets atributes.
+
+        If reset_to_pareto_rounds is not defined it is set to
+        number_of_rounds. Output folder name is set and random seed is
+        asigned.
+        '''
         if not self.reset_to_pareto_rounds:
             self.reset_to_pareto_rounds = self.number_of_rounds
         self.output_folder = os.path.join("log", self.output_folder)
@@ -70,6 +126,37 @@ class Config:
 
 
 class EntropyOptimizer:
+    '''Entropy Optimizer.
+
+    This class holds variables that describe the settings of the
+    algorithm and also holds information about current generation that
+    is beeing used in the algorithm.
+
+    Attributes:
+        model: A model used for evaluation of the selected features.
+        train_data: The data the model is training on.
+        train_target: The target values for training the model.
+        evaluator: A function that accepts the "genes", tests that set
+            of genes and returns Result.
+        number_of_genes: An integer representing the number of genes.
+        mating_selection_strategy: A MatingSelectionStrategy object
+            that defines the strategy used for mating.
+        reset_to_front_predicate:
+        initial_population: An optional attribute containing the
+            population the algorithm starts with.
+        initial_genes: An optional attribute containing a 2D array of
+            integers with indices of active genes for constructing
+            initial population.
+        config: A Config class with settings of the algorithm.  
+        cache_data: A dictionary that saves score for every set of
+            genes calculated.
+        cache_counter:TODO
+        population: The population of the current state of algorithm.
+        pareto_front: A dictionary holding the best Item (from the
+            population) object for each number of selected features.
+        fitness_function: A function that returns the score for a given
+            gene.
+    '''
     def __init__(self,
                  model: Any,
                  train_data: np.array,
@@ -117,13 +204,51 @@ class EntropyOptimizer:
         self.fitness_function = self._fitness_function
 
     def train_model(self, genes: "Genes") -> Any:
+        '''Trains the model.
+
+        Trains the model on the training data (using only features
+        definded by genes array and train target).
+
+        Args:
+            genes: An array of booleans (genes) that detemines which
+                features will be considered when training the  model
+        
+        Returns:
+            The trained model.
+        '''
         return self._model().fit(self.train_data[:, genes], self.train_target)
 
     def _fitness_function(self, genes: "Genes") -> "Tuple[Result, Any]":
+        '''evaluates trained model.
+
+        Calls function to train the model and then evaluates the model
+        with the specified evaluation function. 
+
+        Args:
+            genes: An array of booleans (genes) that represent the
+                model to be evaluated.
+        
+        Returns:
+            A tuple of result (from evaluation) and the trained model
+        '''
         model = self.train_model(genes)
         return self.evaluator(model, genes, None), model
 
     def cached_fitness(self, genes: "Genes") -> "Tuple[Result, Any]":
+        '''Same as _fitnes_function but uses cached values if it can.
+
+        For the given set of genes it checks if cache_data contains
+        that record already. If it does not it creates a new tuple
+        with _fitness_function and saves it to cache_data.
+
+        Args:
+            genes: An array of booleans (genes) whose cache_data record
+                is to be returned
+
+        Returns:
+            A tuple[Result, Any] that was obtained from cache_data or
+            calculated.
+        '''
         #print("Trying:", np.where(genes))
         number = Item.to_number(genes)
         result = self.cache_data.get(number, None)
@@ -137,6 +262,21 @@ class EntropyOptimizer:
         return result
 
     def purge_front_with_information_gain(self):
+        '''Purges front.
+
+        To each item in the front it removes the worst gene and adds
+        that item to the front if it is better than the one already in
+        the front or there is no item with that number of features in
+        the front.
+
+        Args:
+
+        Returns:
+
+        Raises:
+            AssertionError: If the number of features in the new item
+                is not one less than before.
+        '''
         new_items = []
         for num, item in self.pareto_front.items():
             if num == 1:  # Can't remove features
@@ -161,6 +301,19 @@ class EntropyOptimizer:
         self.remove_pareto_non_optimal()
 
     def purge_item_with_information_gain(self, item: "Item") -> "EvalItem":
+        '''Removes the worst gene from an item.
+
+        Checks which gene adds the least to the score and removes it
+        from the item.
+
+        Args:
+            item: An Item object to which we want to remove the worst
+                gene.
+
+        Returns:
+            An EvalItem Object that is the same as the input object but
+            with the worst gene removed.    
+        '''
         base_result, model = self.fitness_function(item.genes)
         on_genes = np.where(item.genes)[0]
         changes = [(1.0, -1) for _ in on_genes]
@@ -186,6 +339,21 @@ class EntropyOptimizer:
         return round_num % 3 == 0
 
     def prepare_loop(self) -> None:
+        '''Preparations befor running main loop.
+
+        It sets some parameters and initial population if it is given
+        and also creates new EvalItem objects for given initial genes.
+        TODO It also saves current EntropyOptimizer object in a pickel
+        file.
+
+        Args:
+
+        Returns:
+
+        Raises:
+            AssertionError: If initial_population and initial_genes are
+                not provided. 
+        '''
         if self.config.cache_fitness_function:
             self.fitness_function = self.cached_fitness
 
@@ -211,6 +379,23 @@ class EntropyOptimizer:
         )
 
     def mainloop(self) -> None:
+        '''Main loop of the algorithm.
+
+        Consists of preparation part and the loop which loops as many
+        times as it is specified by the total number of generations.
+        In each loop occures mating then mutation and after that
+        removal of duplicates, evaluation of the new population. The
+        front is also updated and then excessive and not optimal items
+        are removed from it. If required (depending on 
+        reset_to_pareto_rounds and round_n) the 
+        purge_front_with_information_gain function is executed and the
+        population is set to front. At the end of each loop the current
+        EntropyOptimizer object is saved in a pickle file.
+
+        Args:
+
+        Returns:
+        '''
 
         self.prepare_loop()
 
@@ -256,12 +441,35 @@ class EntropyOptimizer:
             log_data.dump_log(self.config)
 
     def purge_oversize_buckets(self) -> None:
+        '''Removes excessive Items.
+
+        For each number of features it filters the items and keeps only
+        the ones with the best score (how many is decided with 
+        max_bucket_size).
+
+        Args:
+
+        Returns:
+        '''
         new_population: Population = {}
         for num, items in self.population.items():
             new_population[num] = sorted(items, reverse=True)[:self.config.max_bucket_size]
         self.population = new_population
 
     def update_front_from_population(self) -> None:
+        '''Updates front.
+
+        Assuming that the population is sorted (the first elements in
+        lists score the highest), it loops through population and for
+        each number of features checks if item in pareto_front[num]
+        scores higher (or the same) than the best one in population and
+        if not it updates it. If no element with that number of 
+        features is yet in pareto_front it is also added.
+
+        Args:
+
+        Returns: 
+        '''
         # Assume that population is sorted
         for num, items in self.population.items():
             if num in self.pareto_front:
@@ -275,6 +483,18 @@ class EntropyOptimizer:
     @classmethod
     def clear_duplicates_after_mating(cls, un_pop: "UnevaluatedPopulation") \
             -> "UnevaluatedPopulation":
+        '''Removes duplicates from population.
+
+        Creates a new unevaluated population and adds in only one
+        instance of each Item in unevaluated population.
+
+        Args:
+            un_pop: Unevaluated population that needs to be cleared of
+                duplicates.
+        
+        Returns:
+            Unevaluated population, cleared of duplicates.
+        '''
         new_un_pop: UnevaluatedPopulation = {}
         for num, items in un_pop.items():
             new: List[Item] = []
@@ -288,6 +508,15 @@ class EntropyOptimizer:
         return new_un_pop
 
     def remove_pareto_non_optimal(self) -> None:
+        '''Removes not optimal mambers of the front
+
+        Removes items from the front that have worse or equal score as
+        than an item with less features.
+
+        Args:
+
+        Returns:
+        '''
         # Make a copy as to not change dict during looping,
         # sort them by the number of genes
         sorted_items = list(sorted(
@@ -303,6 +532,14 @@ class EntropyOptimizer:
                 current_peak = item
 
     def reset_population_to_front(self) -> None:
+        '''Sets population to front.
+
+        The current front is copied into population.
+
+        Args:
+
+        Returns: 
+        '''
         new_population: Population = {}
         # Keep Pareto front in itemized order
         for num, item in sorted(self.pareto_front.items(),
@@ -312,6 +549,17 @@ class EntropyOptimizer:
 
     def evaluate_unevaluated(self, un_pop: "UnevaluatedPopulation") \
             -> Population:
+        '''Evaluates population.
+
+        Takes dictionary of unevaluated items and creates dictionary
+        of evaluated items.
+
+        Args:
+            un_pop: A dictionary of unevaluated population.
+        
+        Returns:
+            A dictionary of evaluated population.
+        '''
         return {
             num: [item.evaluate(self.fitness_function) for item in items
                   if item.size]
