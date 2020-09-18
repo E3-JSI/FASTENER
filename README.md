@@ -1,4 +1,5 @@
-# FASTENER (FeAture SelecTion ENabled by EntRopy)
+# FASTENER
+___FeAture SelecTion ENabled by EntRopy___
 
 FASTENER is a state-of-the-art feature selecton algorithm for remote sensing, but performs well also on several other data sets. It is most suitable for large datasets with several hundreds of features. It has been develped for the use case of crop/land-cover classification based on Sentinel-II data.
 
@@ -29,3 +30,5 @@ __Abstract__:
     The algorithm can be used in any statistical learning scenario.
 
 
+### Acknowledgements
+This research was funded by European Union's Horizon 2020 programme project PerceptiveSentinel (Research and Innovation) grant number 776115, project NAIADES (Innovation Action) grant number 820985.
