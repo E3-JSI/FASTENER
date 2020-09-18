@@ -83,6 +83,9 @@ def eval_fun(model: Any, genes: "Genes", shuffle_indices: Optional[List[int]] = 
 ```
 
 3) Configure the FASTENER
+
+By default fastener runs for 1000 iterations. The number of iterations can be adjusted with `number_of_rounds` parameter in the `fastener.Config()`.
+
 ```python
 number_of_genes = XX_train.shape[1]
 general_model = DecisionTreeClassifier
