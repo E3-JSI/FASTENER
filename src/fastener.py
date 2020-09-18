@@ -9,14 +9,14 @@ import time
 from dataclasses import dataclass, field
 from functools import wraps
 
-import random_utils
-from random_utils import shuffle
+from src import random_utils
+from src.random_utils import shuffle
 from typing import Dict, List, Callable, Any, Tuple, Optional, \
     Counter as CounterType, Set
 import numpy as np
 from collections import Counter
 
-from item import Item, Result, Population, flatten_population, FitnessFunction, \
+from src.item import Item, Result, Population, flatten_population, FitnessFunction, \
     Genes, EvalItem, RandomFlipMutationStrategy, RandomEveryoneWithEveryone, \
     IntersectionMating, UnionMating, IntersectionMatingWithInformationGain, \
     IntersectionMatingWithWeightedRandomInformationGain, UnevaluatedPopulation, \
@@ -572,7 +572,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import f1_score
 
 general_model = DecisionTreeClassifier
-from dummy_data import XX_train, XX_test, labels_train, labels_test
+from src.dummy_data import XX_train, XX_test, labels_train, labels_test
 
 
 def eval_fun(model: Any, genes: "Genes",
