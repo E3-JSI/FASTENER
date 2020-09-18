@@ -89,10 +89,10 @@ By default fastener runs for 1000 iterations. The number of iterations can be ad
 ```python
 number_of_genes = XX_train.shape[1]
 general_model = DecisionTreeClassifier
-#output folder name must be changed every time the algorithm is run
+# output folder name must be changed every time the algorithm is run
 output_folder_name="output"
 
-#to start the algorithm initial_genes or initial_population must be provided
+# to start the algorithm initial_genes or initial_population must be provided
 initial_genes = [
     [0]
 ]
@@ -126,7 +126,7 @@ best = list(object.front.values())
 
 for item in best:
     # names of best features
-    selected_features =X_df.iloc[:, item.genes].columns.tolist()
+    selected_features = X_df.iloc[:, item.genes].columns.tolist()
 
     X = X_df[selected_features].values.astype(float)
     y = y_df.values.astype(float)
