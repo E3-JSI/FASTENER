@@ -1,4 +1,5 @@
 '''
+FASTENER main classes.
 '''
 
 import math
@@ -27,7 +28,7 @@ Front = Dict[int, EvalItem]
 @dataclass
 class LogData:
     '''Represents a object to be saved into log
-    
+
     Contains data about each generation that will be saved into log.
 
     Attributes:
@@ -89,7 +90,7 @@ class Config:
     '''Configuration parameters
 
     An object that stores configuration parameters of the algorithm.
-    
+
     Attributes:
         output_folder: A string containing the name of the output
             folder for log.
@@ -147,7 +148,7 @@ class EntropyOptimizer:
         initial_genes: An optional attribute containing a 2D array of
             integers with indices of active genes for constructing
             initial population.
-        config: A Config class with settings of the algorithm.  
+        config: A Config class with settings of the algorithm.
         cache_data: A dictionary that saves score for every set of
             genes calculated.
         cache_counter:TODO
@@ -212,7 +213,7 @@ class EntropyOptimizer:
         Args:
             genes: An array of booleans (genes) that detemines which
                 features will be considered when training the  model
-        
+
         Returns:
             The trained model.
         '''
@@ -222,12 +223,12 @@ class EntropyOptimizer:
         '''evaluates trained model.
 
         Calls function to train the model and then evaluates the model
-        with the specified evaluation function. 
+        with the specified evaluation function.
 
         Args:
             genes: An array of booleans (genes) that represent the
                 model to be evaluated.
-        
+
         Returns:
             A tuple of result (from evaluation) and the trained model
         '''
@@ -312,7 +313,7 @@ class EntropyOptimizer:
 
         Returns:
             An EvalItem Object that is the same as the input object but
-            with the worst gene removed.    
+            with the worst gene removed.
         '''
         base_result, model = self.fitness_function(item.genes)
         on_genes = np.where(item.genes)[0]
@@ -352,7 +353,7 @@ class EntropyOptimizer:
 
         Raises:
             AssertionError: If initial_population and initial_genes are
-                not provided. 
+                not provided.
         '''
         if self.config.cache_fitness_function:
             self.fitness_function = self.cached_fitness
@@ -386,8 +387,8 @@ class EntropyOptimizer:
         In each loop occures mating then mutation and after that
         removal of duplicates, evaluation of the new population. The
         front is also updated and then excessive and not optimal items
-        are removed from it. If required (depending on 
-        reset_to_pareto_rounds and round_n) the 
+        are removed from it. If required (depending on
+        reset_to_pareto_rounds and round_n) the
         purge_front_with_information_gain function is executed and the
         population is set to front. At the end of each loop the current
         EntropyOptimizer object is saved in a pickle file.
@@ -444,7 +445,7 @@ class EntropyOptimizer:
         '''Removes excessive Items.
 
         For each number of features it filters the items and keeps only
-        the ones with the best score (how many is decided with 
+        the ones with the best score (how many is decided with
         max_bucket_size).
 
         Args:
@@ -463,12 +464,12 @@ class EntropyOptimizer:
         lists score the highest), it loops through population and for
         each number of features checks if item in pareto_front[num]
         scores higher (or the same) than the best one in population and
-        if not it updates it. If no element with that number of 
+        if not it updates it. If no element with that number of
         features is yet in pareto_front it is also added.
 
         Args:
 
-        Returns: 
+        Returns:
         '''
         # Assume that population is sorted
         for num, items in self.population.items():
@@ -491,7 +492,7 @@ class EntropyOptimizer:
         Args:
             un_pop: Unevaluated population that needs to be cleared of
                 duplicates.
-        
+
         Returns:
             Unevaluated population, cleared of duplicates.
         '''
@@ -538,7 +539,7 @@ class EntropyOptimizer:
 
         Args:
 
-        Returns: 
+        Returns:
         '''
         new_population: Population = {}
         # Keep Pareto front in itemized order
@@ -556,7 +557,7 @@ class EntropyOptimizer:
 
         Args:
             un_pop: A dictionary of unevaluated population.
-        
+
         Returns:
             A dictionary of evaluated population.
         '''

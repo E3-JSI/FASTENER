@@ -1,5 +1,5 @@
 """
-Random utils
+Random utils.
 """
 
 import random as core_random
