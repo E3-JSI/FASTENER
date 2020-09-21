@@ -416,9 +416,10 @@ class IntersectionMatingWithInformationGain(IntersectionMating):
 
     A subclass of IntersectionMating TODO
     '''
-    def __init__(self, number: Optional[IntScaling] = None) -> None:
+    def __init__(self, number: Optional[IntScaling] = None, informationGain = None) -> None:
         self.number = number or self.default_number
         self.scikit_information_gain: List[float] = []
+        self.informationGainAlgorithm = informationGain or sklearn.feature_selection.mutual_info_classif
 
     @staticmethod
     def default_number(x: int) -> int:
@@ -426,8 +427,7 @@ class IntersectionMatingWithInformationGain(IntersectionMating):
 
     def use_data_information(self, train_data: np.array,
                              train_target: np.array) -> None:
-        self.scikit_information_gain = sklearn.feature_selection.\
-            mutual_info_classif(train_data, train_target)
+        self.scikit_information_gain = self.informationGainAlgorithm(train_data, train_target)
 
     def mate_internal(self, item1: Item, item2: Item) -> Genes:
         genes = super().mate_internal(item1, item2)
