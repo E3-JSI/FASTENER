@@ -1,6 +1,5 @@
-'''Support classes for fastener.
-
-
+'''
+Support classes for FASTENER.
 '''
 
 import itertools
@@ -10,7 +9,7 @@ from abc import ABC, abstractmethod
 import sklearn.feature_selection
 import numpy as np
 
-import random_utils
+from src import random_utils
 
 Genes = List[bool]
 FitnessFunction = Callable[["Genes"], Tuple["Result", Any]]
@@ -31,8 +30,8 @@ def flatten_population(population: Population) -> List["EvalItem"]:
 
     Args:
         population: Dictionary to be transformed.
-    
-    Returns: 
+
+    Returns:
         A List with values from all the other lists.
     '''
     return list(itertools.chain(*population.values()))
@@ -42,7 +41,7 @@ def flatten_population(population: Population) -> List["EvalItem"]:
 class Item:
     '''Class representing individual.
 
-    An object that represents an individual in genethic algorithm 
+    An object that represents an individual in genethic algorithm
     (a set of features to be used) and can be evaluated.
 
     Attributes:
@@ -86,13 +85,13 @@ class Item:
     def evaluate(self, fitness_function: FitnessFunction) -> "EvalItem":
         '''Evaluates item.
 
-        Calculates the result of the feature set and returns an 
+        Calculates the result of the feature set and returns an
         EvalItem object (Item with result attribute).
 
         Args:
             fitness_function: Function used to calculate result.
 
-        Returns: 
+        Returns:
             An EvalItem object.
         '''
         result = fitness_function(self.genes)[0]
@@ -108,10 +107,10 @@ class Item:
         Args:
             other: A variable for which we wish to check if it is
                 equivalent to self.
-        
+
         Returns:
             True if the passed variable is of type Item and is
-            equivalent to self and False otherwise. 
+            equivalent to self and False otherwise.
         '''
         return isinstance(other, Item) and self.number == other.number
 
@@ -126,19 +125,19 @@ class Item:
 
         Converts number to binary and then sets the feature values
         accordingly to the string of ones and zeros. At the end it adds
-        zeros if needed (for the not selected features) 
+        zeros if needed (for the not selected features)
 
         Args:
             num: The number we wish to convert to genes array.
             num_genes: Number of all genes (active and inactive).
 
         Returns:
-            An array of booleans (genes), for the given number.            
+            An array of booleans (genes), for the given number.
         '''
         return list(
             map(lambda x: bool(int(x)),
                 reversed(bin(num)[2:].zfill(num_genes))))
-    
+
     @classmethod
     def to_number(cls, genes: Genes) -> int:
         '''Converts array of genes to number.
@@ -149,7 +148,7 @@ class Item:
         Args:
             genes: An array of booleans (genes) to be converted to
                 number.
-        
+
         Returns:
             An integer representing the selected features.
         '''
@@ -217,7 +216,7 @@ class Item:
         Args:
             g1: An array of booleans (genes).
             g2: An array of booleans (genes).
-        
+
         Returns:
             An integer array of indexes where the boolean array differ
         '''
@@ -248,7 +247,7 @@ class EvalItem(Item):
 
         Args:
             other: An EvalItem object to be compared.
-        
+
         Returns:
             True if self and other object have the same size and self
             result is lower than others.
@@ -268,10 +267,10 @@ class EvalItem(Item):
         Args:
             other: A variable for which we wish to check if it is
                 equivalent to self.
-        
+
         Returns:
             True if the passed variable is of type EvalItem and is
-            equivalent to self and False otherwise. 
+            equivalent to self and False otherwise.
         '''
         return isinstance(other, EvalItem) and self.number == other.number
 
@@ -283,13 +282,13 @@ class EvalItem(Item):
     def evaluate(self, fitness_function: FitnessFunction) -> "EvalItem":
         '''Overrides Evaluate method from Item class.
 
-        Calculates the result of the feature set and returns an 
+        Calculates the result of the feature set and returns an
         EvalItem object (Item with result attribute).
 
         Args:
             fitness_function: Function used to calculate result.
 
-        Returns: 
+        Returns:
             Object self.
         '''
         return self
@@ -350,8 +349,8 @@ class MatingStrategy(ABC):
             item2: Second parent (Item object) to be used for mating.
             generatinon: Integer representing generation of the
                 offspring (result of mating).
-        
-        Returns: 
+
+        Returns:
             Item object that is the result of mating.
         '''
         genes = self.mate_internal(item1, item2)
@@ -381,7 +380,7 @@ class UnionMating(MatingStrategy):
         Args:
             item1: An Item object we wish to mate.
             item2: An Item object we wish to mate.
-        
+
         Returns:
             An array of booleans (genes) that is the result of mating.
         '''
@@ -404,7 +403,7 @@ class IntersectionMating(MatingStrategy):
         Args:
             item1: An Item object we wish to mate.
             item2: An Item object we wish to mate.
-        
+
         Returns:
             An array of booleans (genes) that is the result of mating.
         '''
@@ -494,8 +493,8 @@ class MatingSelectionStrategy(ABC):
 
     An abstract class that defines how the current population will be
     processed (in terms of mating) but not how the mating pool will be
-    choosen or how pairs from that pool will be generated. 
-    
+    choosen or how pairs from that pool will be generated.
+
     Attributes:
         mating_strategy: Mating strategy to be used in the algorithm.
         overwrite_carry_over: TODO
@@ -523,7 +522,7 @@ class MatingSelectionStrategy(ABC):
                 current generation of mating.
 
         Returns:
-            A dictionary that represents the new population 
+            A dictionary that represents the new population
             (of Item objects).
         '''
         result = self.mating_pool(population)
@@ -570,14 +569,14 @@ class RandomEveryoneWithEveryone(MatingSelectionStrategy):
 
     def mating_pool(self, population: Population) -> MatingPoolResult:
         '''Chooses mating pool.
-        
+
         Transforms population into a single list and randomly chooses
         a mating pool of size pool_size.
 
         Args:
             population: A dictionary with List[Item] values and form
                 those Items the mating pool is choosen.
-        
+
         Returns:
             A MatingPoolResult object.
         '''
@@ -600,7 +599,7 @@ class RandomEveryoneWithEveryone(MatingSelectionStrategy):
                 for mating will be chosen.
             current_generation: An integer which represents the current
                 generation of mating.
-        
+
         Returns:
             A List of Item objects (the result of mating).
         '''
@@ -653,7 +652,7 @@ class NoMating(MatingSelectionStrategy):
             mating_pool: A list of EvalItem objects.
             current_generation: An integer which represents the current
                 generation of mating.
-        
+
         Returns:
             A List of Item objects (equivalent to the input list but
             with increased generation).
