@@ -40,10 +40,11 @@ class LogData:
             population) object for each number of selected features.
         mated: Population after mating.
         mutated: Population after mutation.
-        cache_counter: TODO
+        cache_counter: A dictionary, counting how many times each value
+            was cought.
         cache_data: A dictionary that saves score for every set of
             genes calculated.
-        random_step: TODO
+        random_state: A random state to be saved in the log file.
         timestamp_step: A float representing the time when the object
             was created.
 
@@ -94,7 +95,7 @@ class Config:
     Attributes:
         output_folder: A string containing the name of the output
             folder for log.
-        rendom_seed: TODO
+        rendom_seed: Used to initialize seed from random_utils.
         number_of_rounds: An integer representing the number of rounds
             (generations) of the algorithm.
         max_bucket_size: An  integer representing the maximum number
@@ -142,7 +143,7 @@ class EntropyOptimizer:
         number_of_genes: An integer representing the number of genes.
         mating_selection_strategy: A MatingSelectionStrategy object
             that defines the strategy used for mating.
-        reset_to_front_predicate:
+        reset_to_front_predicate: TODO
         initial_population: An optional attribute containing the
             population the algorithm starts with.
         initial_genes: An optional attribute containing a 2D array of
@@ -151,7 +152,8 @@ class EntropyOptimizer:
         config: A Config class with settings of the algorithm.
         cache_data: A dictionary that saves score for every set of
             genes calculated.
-        cache_counter:TODO
+        cache_counter: A dictionary, counting how many times each value
+            was cought.
         population: The population of the current state of algorithm.
         pareto_front: A dictionary holding the best Item (from the
             population) object for each number of selected features.
@@ -344,8 +346,7 @@ class EntropyOptimizer:
 
         It sets some parameters and initial population if it is given
         and also creates new EvalItem objects for given initial genes.
-        TODO It also saves current EntropyOptimizer object in a pickel
-        file.
+        It also saves current EntropyOptimizer object in a pickel file.
 
         Args:
 
