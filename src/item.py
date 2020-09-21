@@ -413,12 +413,27 @@ class IntersectionMating(MatingStrategy):
 class IntersectionMatingWithInformationGain(IntersectionMating):
     '''Intersection mating strategy with information gain.
 
-    A subclass of IntersectionMating TODO
+    A subclass of IntersectionMating. It chooses active features with
+    intersection plus some features from either one of the parents,
+    that have the highest information gain.  
     '''
-    def __init__(self, number: Optional[IntScaling] = None, informationGain = None) -> None:
+    def __init__(self, number: Optional[IntScaling] = None, regression: bool = False) -> None:
+        '''Init function.
+
+        Inits parameters, if model uses regression it sets regression
+        information gain, otherwise classification.
+
+        Args:
+            number: A function that decides how many features are to be
+                added to the intersection.
+            regression: A boolean telling us if model is ussing
+                regression
+        
+        Returns:
+        '''
         self.number = number or self.default_number
         self.scikit_information_gain: List[float] = []
-        self.informationGainAlgorithm = informationGain or sklearn.feature_selection.mutual_info_classif
+        self.informationGainAlgorithm = sklearn.feature_selection.mutual_info_regression if regression else sklearn.feature_selection.mutual_info_classif
 
     @staticmethod
     def default_number(x: int) -> int:
@@ -426,9 +441,36 @@ class IntersectionMatingWithInformationGain(IntersectionMating):
 
     def use_data_information(self, train_data: np.array,
                              train_target: np.array) -> None:
+        '''Computes information gain with train data.
+
+        Computes information gain with train data, using the correct
+        algorithm (depending on whether the model uses classifocation
+        or regression).
+
+        Args:
+            train_data: Data with which the information gain is
+                calculated.
+            train_target: Target with which the information gain is
+                calculated.
+        
+        Returns:
+        '''
         self.scikit_information_gain = self.informationGainAlgorithm(train_data, train_target)
 
     def mate_internal(self, item1: Item, item2: Item) -> Genes:
+        '''Implemented intersection mating with information gain.
+
+        First Calculates intersection of genes. Then featuresare sorted
+        by information gain and best (how many is decided by number
+        function) features by information gain are added to the set.
+
+        Args:
+            item1: An Item object we wish to mate.
+            item2: An Item object we wish to mate.
+
+        Returns:
+            An array of booleans (genes) that is the result of mating.
+        '''
         genes = super().mate_internal(item1, item2)
         ma = max(item1.size, item2.size)
         mi = min(item1.size, item2.size)
@@ -445,11 +487,16 @@ class IntersectionMatingWithInformationGain(IntersectionMating):
 
 class IntersectionMatingWithWeightedRandomInformationGain(
     IntersectionMatingWithInformationGain):
-    '''TODO
+    '''Intersection mating strategy with weighted information gain.
+
+    A subclass of IntersectionMatingWithInformationGain. It chooses
+    active features with intersection plus it selects some features
+    (from either one of the parents) with the probability, 
+    proportionate to the feature's information gain.    
     '''
     def __init__(self, number: Optional[IntScaling] = None,
-                 scaling=None) -> None:
-        super().__init__(number)
+                 scaling=None, regression: bool = False) -> None:
+        super().__init__(number, regression)
         self.number = number or self.default_number
         self.scaling = scaling or self.default_scaling
 
@@ -458,6 +505,20 @@ class IntersectionMatingWithWeightedRandomInformationGain(
         return np.log1p(np.log1p(np.log1p(x)))
 
     def mate_internal(self, item1: Item, item2: Item) -> Genes:
+        '''Intersection mating with weighted information gain.
+
+        First Calculates intersection of genes. Then featuresare sorted
+        by information gain and best (how many is decided by number
+        function) features by information gain are added to the set
+        with a probability proportionate to the information gain.
+
+        Args:
+            item1: An Item object we wish to mate.
+            item2: An Item object we wish to mate.
+
+        Returns:
+            An array of booleans (genes) that is the result of mating.
+        '''
         genes = super().mate_internal(item1, item2)
         ma = max(item1.size, item2.size)
         mi = min(item1.size, item2.size)
@@ -481,8 +542,15 @@ class IntersectionMatingWithWeightedRandomInformationGain(
 
 @dataclass
 class MatingPoolResult:
-    '''
-        TODO
+    '''Mating pool result.
+
+    A class used to store mating pool and items to be promoted to the
+    next generation.
+
+    Attributes:
+        mating_pool: A list of EvalItem objects that are to be mated.
+        carry_over: A list of EvalItem objects from current generation
+            to be promoted to the next one.
     '''
     mating_pool: List["EvalItem"]
     carry_over: List["EvalItem"]
@@ -497,7 +565,6 @@ class MatingSelectionStrategy(ABC):
 
     Attributes:
         mating_strategy: Mating strategy to be used in the algorithm.
-        overwrite_carry_over: TODO
     '''
     def __init__(self, mating_strategy: MatingStrategy,
                  overwrite_carry_over: bool = True
@@ -630,12 +697,9 @@ class NoMating(MatingSelectionStrategy):
 
         Returns:
             A MatingPoolResult object with population as mating pool.
-
-        Raises:
-             AssertionError: TODO: zakaj morata bit enake dolžine?
         '''
         f_pop = flatten_population(population)
-        assert len(f_pop) == len(population)
+        #assert len(f_pop) == len(population)
         return MatingPoolResult(
             f_pop, []
         )
