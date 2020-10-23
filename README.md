@@ -153,7 +153,7 @@ For detailed workflow check `Example.ipynb`.
 
 If you use the algorithm, please cite the following paper:
 
-* Koprivec, F.; Kenda, K.; Šircelj, B., FASTENER Feature Selection for Inference from Earth Observation Data. Entropy 2020, ?, ?. (_minor reviews pending_)
+* Koprivec, F.; Kenda, K.; Šircelj, B., FASTENER Feature Selection for Inference from Earth Observation Data. Entropy 2020, 22, 1198 ([link](https://www.mdpi.com/1099-4300/22/11/1198)).
 
 __Abstract__:
 
