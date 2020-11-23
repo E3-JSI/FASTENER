@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 import sklearn.feature_selection
 import numpy as np
 
-from src import random_utils
+import fastener.random_utils as random_utils
 
 Genes = List[bool]
 FitnessFunction = Callable[["Genes"], Tuple["Result", Any]]

@@ -15,12 +15,18 @@ For further details see `requirements.txt`.
 * For example:
     * Pandas
 
+## Installation
+Install using pip:
+```
+pip install fastener
+```
+
 ## Users' Manual
 Basic documentation is available within the code.
 
 A simple workflow is described below.
 
-0) Includes
+0. Includes
 ```python
 # import dataset
 from sklearn.datasets import load_breast_cancer
@@ -40,17 +46,14 @@ from typing import Dict, List, Callable, Any, Tuple, Optional, \
     Counter as CounterType, Set
 
 # FASTENER specific imports
-from src.random_utils import shuffle
-from src import random_utils
-from src.item import Item, EvalItem, Result, Population, flatten_population, FitnessFunction, \
-    Genes, EvalItem, RandomFlipMutationStrategy, RandomEveryoneWithEveryone, \
+from fastener.random_utils import shuffle
+from fastener.item import Result, Genes, RandomFlipMutationStrategy, RandomEveryoneWithEveryone, \
     IntersectionMating, UnionMating, IntersectionMatingWithInformationGain, \
-    IntersectionMatingWithWeightedRandomInformationGain, UnevaluatedPopulation, \
-    MatingStrategy, MutationStrategy, MatingSelectionStrategy
-from src import fastener
+    IntersectionMatingWithWeightedRandomInformationGain
+from fastener import fastener
 ```
 
-1) Prepare data
+1. Prepare data
 ```python
 # loading breast cancer dataset
 # scikit-learn 0.22+ is needed
@@ -69,7 +72,7 @@ XX_train = X_df.to_numpy()[:n_test, :]
 XX_test = X_df.to_numpy()[n_test:, :]
 ```
 
-2) Define feature evaluation function
+2. Define feature evaluation function
 ```python
 def eval_fun(model: Any, genes: "Genes", shuffle_indices: Optional[List[int]] = None) -> "Result":
     test_data = XX_test[:, genes]
@@ -82,23 +85,26 @@ def eval_fun(model: Any, genes: "Genes", shuffle_indices: Optional[List[int]] = 
     return res
 ```
 
-3) Configure the FASTENER
+3. Configure the FASTENER
 
 By default fastener runs for 1000 iterations. The number of iterations can be adjusted with `number_of_rounds` parameter in the `fastener.Config()`.
 
 ```python
 number_of_genes = XX_train.shape[1]
 general_model = DecisionTreeClassifier
-# output folder name must be changed every time the algorithm is run
+#output folder name must be changed every time the algorithm is run
 output_folder_name="output"
 
-# to start the algorithm initial_genes or initial_population must be provided
+#to start the algorithm initial_genes or initial_population must be provided
 initial_genes = [
     [0]
 ]
 
-# Select mating selection strategies (RandomEveryoneWithEveryone, NoMating) and mating strategy
-# (UnionMating, IntersectionMating, IntersectionMatingWithInformationGain, IntersectionMatingWithWeightedRandomInformationGain)
+# Select mating selection strategie (RandomEveryoneWithEveryone, NoMating) and mating strategy
+# (UnionMating, IntersectionMating, IntersectionMatingWithInformationGain, 
+#IntersectionMatingWithWeightedRandomInformationGain) 
+#If regression model is used IntersectionMatingWithInformationGain, IntersectionMatingWithWeightedRandomInformationGain 
+#must have regression=True set (eg. IntersectionMatingWithInformationGain(regression=True))
 mating = RandomEveryoneWithEveryone(pool_size=3, mating_strategy=IntersectionMatingWithWeightedRandomInformationGain())
 
 # Random mutation (probability of gene mutating: 1 / number_of_genes)
@@ -139,12 +145,31 @@ for item in best:
 ```
 
 
-
 For detailed workflow check `Example.ipynb`.
+
+## Mating strategy
+The following mating strategies are available:
+* Union mating: If either (or both) of the parents have the feature selected the descendent will have it too.
+```python
+mating_strategy=UnionMating()
+```
+* Intersection mating: If both of the parents have the feature the descendent will have it too.
+```python
+mating_strategy=IntersectionMating()
+```
+* Intersection mating with information gain: If both of the parents have the feature the descendent will have it too. Additionally, some features from either one of the parents, that have the highest information gain are added.  
+```python
+mating_strategy=IntersectionMatingWithInformationGain()
+```
+* Intersection mating with weighted random information gain: If both of the parents have the feature the descendent will have it too. Additionally, some features from either one of the parents, will be added. The probbability of selecting a features is proportionate to this feature's information gain.
+```python
+mating_strategy=IntersectionMatingWithWeightedRandomInformationGain()
+```
+
+**Note:**  If regression model is used with Intersection mating with information gain or Intersection mating with weighted random information gain, the regression flag must be set to True (eg. IntersectionMatingWithWeightedRandomInformationGain(regression=True)). However, if the dataset is large this can cause errors so intersection mating or union mating is a better choice.
 
 ## Future Work
 
-* Create PyPI module
 * Update documentation
 * Prepare example notebooks
 * Create unit tests

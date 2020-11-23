@@ -9,14 +9,14 @@ import time
 from dataclasses import dataclass, field
 from functools import wraps
 
-from src import random_utils
-from src.random_utils import shuffle
+import fastener.random_utils as random_utils
+from fastener.random_utils import shuffle
 from typing import Dict, List, Callable, Any, Tuple, Optional, \
     Counter as CounterType, Set
 import numpy as np
 from collections import Counter
 
-from src.item import Item, Result, Population, flatten_population, FitnessFunction, \
+from fastener.item import Item, Result, Population, flatten_population, FitnessFunction, \
     Genes, EvalItem, RandomFlipMutationStrategy, RandomEveryoneWithEveryone, \
     IntersectionMating, UnionMating, IntersectionMatingWithInformationGain, \
     IntersectionMatingWithWeightedRandomInformationGain, UnevaluatedPopulation, \
@@ -569,7 +569,7 @@ class EntropyOptimizer:
         }
 
 
-from sklearn.tree import DecisionTreeClassifier
+"""from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import f1_score
 
 general_model = DecisionTreeClassifier
@@ -616,3 +616,4 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+"""
