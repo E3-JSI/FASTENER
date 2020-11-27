@@ -4,7 +4,7 @@ Support classes for FASTENER.
 
 import itertools
 from dataclasses import dataclass, field
-from typing import List, Optional, Callable, Dict, Tuple, Any, Set
+from typing import List, Optional, Callable, Dict, Tuple, Any
 from abc import ABC, abstractmethod
 import sklearn.feature_selection
 import numpy as np
@@ -13,7 +13,7 @@ import fastener.random_utils as random_utils
 
 Genes = List[bool]
 FitnessFunction = Callable[["Genes"], Tuple["Result", Any]]
-#for each item size it keeps lists of Items of this size
+# for each item size it keeps lists of Items of this size
 Population = Dict[int, List["EvalItem"]]
 UnevaluatedPopulation = Dict[int, List["Item"]]
 
@@ -415,7 +415,7 @@ class IntersectionMatingWithInformationGain(IntersectionMating):
 
     A subclass of IntersectionMating. It chooses active features with
     intersection plus some features from either one of the parents,
-    that have the highest information gain.  
+    that have the highest information gain.
     '''
     def __init__(self, number: Optional[IntScaling] = None, regression: bool = False) -> None:
         '''Init function.
@@ -428,7 +428,7 @@ class IntersectionMatingWithInformationGain(IntersectionMating):
                 added to the intersection.
             regression: A boolean telling us if model is ussing
                 regression
-        
+
         Returns:
         '''
         self.number = number or self.default_number
@@ -452,7 +452,7 @@ class IntersectionMatingWithInformationGain(IntersectionMating):
                 calculated.
             train_target: Target with which the information gain is
                 calculated.
-        
+
         Returns:
         '''
         self.scikit_information_gain = self.informationGainAlgorithm(train_data, train_target)
@@ -490,9 +490,10 @@ class IntersectionMatingWithWeightedRandomInformationGain(
     '''Intersection mating strategy with weighted information gain.
 
     A subclass of IntersectionMatingWithInformationGain. It chooses
-    active features with intersection plus it selects some features
-    (from either one of the parents) with the probability, 
-    proportionate to the feature's information gain.    
+    active features with intersection and it additionally selects some
+    features from either one of the parents. The probability of a feature
+    being selected is proportional to scaling function applied to it's
+    calculated information gain.
     '''
     def __init__(self, number: Optional[IntScaling] = None,
                  scaling=None, regression: bool = False) -> None:
@@ -699,7 +700,7 @@ class NoMating(MatingSelectionStrategy):
             A MatingPoolResult object with population as mating pool.
         '''
         f_pop = flatten_population(population)
-        #assert len(f_pop) == len(population)
+        # assert len(f_pop) == len(population)
         return MatingPoolResult(
             f_pop, []
         )

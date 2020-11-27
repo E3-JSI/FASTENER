@@ -4,16 +4,14 @@ ___FeAture SelecTion ENabled by EntRopy___ for Python
 FASTENER is a state-of-the-art feature selecton algorithm for remote sensing, but performs well also on several other data sets. It is most suitable for large datasets with several hundreds of features. It has been develped for the use case of crop/land-cover classification based on Sentinel-II data.
 
 ## Prerequisites
-For further details see `requirements.txt`.
 
 * Python 3.6+
-* numpy (1.18-1+)
-* scipy (1.4.1+)
-* typed-ast (1.4.1.+)
 * scikit-learn (0.22.2+)
-* typing-extensions (3.7.4.1+)
+* mypy(0.761)
 * For example:
     * Pandas
+
+For further details see `requirements.txt`.
 
 ## Installation
 Install using pip:
@@ -87,24 +85,24 @@ def eval_fun(model: Any, genes: "Genes", shuffle_indices: Optional[List[int]] = 
 
 3. Configure the FASTENER
 
-By default fastener runs for 1000 iterations. The number of iterations can be adjusted with `number_of_rounds` parameter in the `fastener.Config()`.
+By default fastener runs for 1000 iterations. The number of iterations can be adjusted with `number_of_rounds` parameter in the `fastener.Config`.
 
 ```python
 number_of_genes = XX_train.shape[1]
 general_model = DecisionTreeClassifier
-#output folder name must be changed every time the algorithm is run
-output_folder_name="output"
+# output folder name must be changed every time the algorithm is run
+output_folder_name = "output"
 
-#to start the algorithm initial_genes or initial_population must be provided
+# to start the algorithm initial_genes or initial_population must be provided
 initial_genes = [
     [0]
 ]
 
 # Select mating selection strategie (RandomEveryoneWithEveryone, NoMating) and mating strategy
 # (UnionMating, IntersectionMating, IntersectionMatingWithInformationGain, 
-#IntersectionMatingWithWeightedRandomInformationGain) 
-#If regression model is used IntersectionMatingWithInformationGain, IntersectionMatingWithWeightedRandomInformationGain 
-#must have regression=True set (eg. IntersectionMatingWithInformationGain(regression=True))
+# IntersectionMatingWithWeightedRandomInformationGain) 
+# If regression model is used IntersectionMatingWithInformationGain, IntersectionMatingWithWeightedRandomInformationGain 
+# must have regression=True set (eg. IntersectionMatingWithInformationGain(regression=True))
 mating = RandomEveryoneWithEveryone(pool_size=3, mating_strategy=IntersectionMatingWithWeightedRandomInformationGain())
 
 # Random mutation (probability of gene mutating: 1 / number_of_genes)
@@ -151,19 +149,19 @@ For detailed workflow check `Example.ipynb`.
 The following mating strategies are available:
 * Union mating: If either (or both) of the parents have the feature selected the descendent will have it too.
 ```python
-mating_strategy=UnionMating()
+mating_strategy = UnionMating()
 ```
 * Intersection mating: If both of the parents have the feature the descendent will have it too.
 ```python
-mating_strategy=IntersectionMating()
+mating_strategy = IntersectionMating()
 ```
 * Intersection mating with information gain: If both of the parents have the feature the descendent will have it too. Additionally, some features from either one of the parents, that have the highest information gain are added.  
 ```python
-mating_strategy=IntersectionMatingWithInformationGain()
-```
-* Intersection mating with weighted random information gain: If both of the parents have the feature the descendent will have it too. Additionally, some features from either one of the parents, will be added. The probbability of selecting a features is proportionate to this feature's information gain.
+mating_strategy = IntersectionMatingWithInformationGain()
+``` 
+* Intersection mating with weighted random information gain: If both of the parents have the feature the descendent will have it too. Additionally, some features from either one of the parents, will be added. The probability of a feature being selected is proportional to scaling function applied to it's calculated information gain.
 ```python
-mating_strategy=IntersectionMatingWithWeightedRandomInformationGain()
+mating_strategy = IntersectionMatingWithWeightedRandomInformationGain()
 ```
 
 **Note:**  If regression model is used with Intersection mating with information gain or Intersection mating with weighted random information gain, the regression flag must be set to True (eg. IntersectionMatingWithWeightedRandomInformationGain(regression=True)). However, if the dataset is large this can cause errors so intersection mating or union mating is a better choice.

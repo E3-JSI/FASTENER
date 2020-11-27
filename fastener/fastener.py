@@ -16,11 +16,8 @@ from typing import Dict, List, Callable, Any, Tuple, Optional, \
 import numpy as np
 from collections import Counter
 
-from fastener.item import Item, Result, Population, flatten_population, FitnessFunction, \
-    Genes, EvalItem, RandomFlipMutationStrategy, RandomEveryoneWithEveryone, \
-    IntersectionMating, UnionMating, IntersectionMatingWithInformationGain, \
-    IntersectionMatingWithWeightedRandomInformationGain, UnevaluatedPopulation, \
-    MatingStrategy, MutationStrategy, MatingSelectionStrategy
+from fastener.item import Item, Result, Population, Genes, EvalItem, \
+    UnevaluatedPopulation, MutationStrategy, MatingSelectionStrategy
 
 Front = Dict[int, EvalItem]
 
@@ -252,7 +249,7 @@ class EntropyOptimizer:
             A tuple[Result, Any] that was obtained from cache_data or
             calculated.
         '''
-        #print("Trying:", np.where(genes))
+        # print("Trying:", np.where(genes))
         number = Item.to_number(genes)
         result = self.cache_data.get(number, None)
         self.cache_counter[number] += 1
@@ -260,7 +257,7 @@ class EntropyOptimizer:
             result = self._fitness_function(genes)
             self.cache_data[number] = result
         else:
-            #print("Hitted", self.cache_counter)
+            # print("Hitted", self.cache_counter)
             pass
         return result
 
@@ -424,7 +421,6 @@ class EntropyOptimizer:
             aft = len(self.pareto_front)
 
             # print(len(flatten_population(self.population)), bef, aft)
-
 
             if self.config.reset_to_pareto_rounds and \
                     round_n % self.config.reset_to_pareto_rounds == 0:
