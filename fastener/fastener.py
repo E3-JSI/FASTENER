@@ -2,25 +2,20 @@
 FASTENER main classes.
 '''
 
-import math
 import os
 import pickle
 import time
 from dataclasses import dataclass, field
-from functools import wraps
 
-from src import random_utils
-from src.random_utils import shuffle
+import fastener.random_utils as random_utils
+from fastener.random_utils import shuffle
 from typing import Dict, List, Callable, Any, Tuple, Optional, \
     Counter as CounterType, Set
 import numpy as np
 from collections import Counter
 
-from src.item import Item, Result, Population, flatten_population, FitnessFunction, \
-    Genes, EvalItem, RandomFlipMutationStrategy, RandomEveryoneWithEveryone, \
-    IntersectionMating, UnionMating, IntersectionMatingWithInformationGain, \
-    IntersectionMatingWithWeightedRandomInformationGain, UnevaluatedPopulation, \
-    MatingStrategy, MutationStrategy, MatingSelectionStrategy
+from fastener.item import Item, Result, Population, Genes, EvalItem, \
+    UnevaluatedPopulation, MutationStrategy, MatingSelectionStrategy
 
 Front = Dict[int, EvalItem]
 
@@ -252,7 +247,7 @@ class EntropyOptimizer:
             A tuple[Result, Any] that was obtained from cache_data or
             calculated.
         '''
-        #print("Trying:", np.where(genes))
+        # print("Trying:", np.where(genes))
         number = Item.to_number(genes)
         result = self.cache_data.get(number, None)
         self.cache_counter[number] += 1
@@ -260,7 +255,7 @@ class EntropyOptimizer:
             result = self._fitness_function(genes)
             self.cache_data[number] = result
         else:
-            #print("Hitted", self.cache_counter)
+            # print("Hitted", self.cache_counter)
             pass
         return result
 
@@ -425,7 +420,6 @@ class EntropyOptimizer:
 
             # print(len(flatten_population(self.population)), bef, aft)
 
-
             if self.config.reset_to_pareto_rounds and \
                     round_n % self.config.reset_to_pareto_rounds == 0:
 
@@ -569,7 +563,7 @@ class EntropyOptimizer:
         }
 
 
-from sklearn.tree import DecisionTreeClassifier
+"""from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import f1_score
 
 general_model = DecisionTreeClassifier
@@ -616,3 +610,4 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+"""
