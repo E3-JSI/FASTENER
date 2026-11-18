@@ -22,6 +22,7 @@ them with your evaluator, so it works with any model that has `fit` and
 | [examples.md](examples.md) | A catalogue of recipes, each backed by a runnable script in [examples/](examples/) |
 | [llm-guidance.md](llm-guidance.md) | Guiding the search with a large language model: the feature prior and the subset proposer |
 | [regression.md](regression.md) | Using FASTENER with a continuous target |
+| [variants.md](variants.md) | The variants of FASTENER: the historical mating versions, the implemented variant families and the experiment map |
 | [pitfalls.md](pitfalls.md) | Errors you will meet and how to avoid them, and questions that come up |
 
 For what changed since the 2020 paper, see [../CHANGELOG.md](../CHANGELOG.md).
@@ -94,7 +95,26 @@ FASTENER writes its log folders to `log/` under the current directory, so run
 the examples from a directory where that is fine. They were checked with
 Python 3.11, numpy 2.4, scikit-learn 1.9 and Boruta 0.4.
 
+## Tests
+
+Unit tests live in [`tests/`](../tests/) and need only FASTENER's own
+requirements plus pytest. From the repo root:
+
+```sh
+pip install pytest
+python -m pytest tests
+```
+
+| File | What it covers |
+|---|---|
+| `test_item.py` | Genes, items and results |
+| `test_strategies.py` | Mating, mutation and swap strategies |
+| `test_optimizer.py` | `EntropyOptimizer`: the main loop, pruning, budgets and the Pareto front |
+| `test_fast_mi.py` | The fast mutual-information estimator against scikit-learn's |
+| `test_seeding.py` | mRMR and Boruta seeds |
+| `test_guidance.py` | The feature prior and the subset proposer |
+
 ## Citing
 
 If you use FASTENER, cite the paper. The reference and BibTeX are in the
-[README](../README.md#citation).
+[README](../README.md#-citation).

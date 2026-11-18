@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="FASTENER">
+  <title>FASTENER</title>
+  <polygon points="60,8 105,34 105,86 60,112 15,86 15,34" fill="#1f3a5f" stroke="#16304f" stroke-width="4" stroke-linejoin="round"/>
+  <polyline points="31,84 47,84 47,69 62,69 62,56 76,56 76,45 90,45" fill="none" stroke="#f5a623" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="47" cy="84" r="5.5" fill="#ffffff" stroke="#f5a623" stroke-width="3"/>
+  <circle cx="62" cy="69" r="5.5" fill="#ffffff" stroke="#f5a623" stroke-width="3"/>
+  <circle cx="76" cy="56" r="5.5" fill="#ffffff" stroke="#f5a623" stroke-width="3"/>
+  <circle cx="90" cy="45" r="5.5" fill="#ffffff" stroke="#f5a623" stroke-width="3"/>
+</svg>
