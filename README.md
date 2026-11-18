@@ -1,22 +1,66 @@
-# FASTENER 
-> FeAture SelecTion ENabled by EntRopy
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo_dark.svg">
+    <img src="assets/logo.svg" alt="FASTENER" width="460">
+  </picture>
+</p>
 
-FASTENER is a genetic algorithm for feature selection. It wraps any model
-with `fit` and `predict`, and any score. It searches for the best feature
-subset of every size at once, and returns a Pareto front: one subset per
-size, each scoring strictly better than every smaller one. Mutual information
-between features and the target guides the crossover. Permutation importance
-guides the pruning of the front, which tries dropping the weakest feature of
-each subset. Optionally, a large language model guides the search as well
-(see [LLM guidance](#llm-guidance)). It works for classification and, with a regression estimate of
-mutual information, for [regression](docs/regression.md).
+<p align="center">
+  <a href="https://doi.org/10.3390/e22111198"><img src="https://img.shields.io/badge/paper-Entropy%202020-1f3a5f" alt="paper"></a>
+  <a href="docs/README.md"><img src="https://img.shields.io/badge/docs-read-f5a623" alt="documentation"></a>
+  <img src="https://img.shields.io/badge/python-3.11%20tested-3776ab?logo=python&logoColor=white" alt="python">
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-2026-5b6b80" alt="changelog"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
+</p>
+
+<p align="center">
+  FASTENER is a genetic algorithm for <b>feature selection</b> that finds the best subset of <b>every size</b> at once.
+</p>
+
+<br>
+
+FASTENER wraps any model with `fit` and `predict`, and any score. Instead of a
+single subset, it returns a **Pareto front**: one subset per size, each scoring
+strictly better than every smaller one. That lets you trade accuracy for
+fewer features after a single run. Mutual information between features and the
+target guides the crossover. Permutation importance guides the pruning of the
+front. You can also let a large language model, a domain expert or another
+selector guide the search.
+
+FASTENER was first developed for inference from Earth observation data
+([Entropy, 2020](https://doi.org/10.3390/e22111198)). Since then it has gained
+a swap operator, fit-capped budgets, filter seeds, outside guidance, faster
+mutual information, tests and full documentation. See the
+[changelog](CHANGELOG.md).
+
+## ⚡️ Quickstart
+
+Select features for a decision tree on the breast-cancer data:
 
 ```python
+from sklearn.datasets import load_breast_cancer
+from sklearn.metrics import f1_score
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+
+import random_utils
 from fastener import Config, EntropyOptimizer
 from item import (IntersectionMatingWithWeightedRandomInformationGain,
-                  RandomEveryoneWithEveryone, RandomFlipMutationStrategy)
+                  RandomEveryoneWithEveryone, RandomFlipMutationStrategy, Result)
 
-n = X_train.shape[1]
+X, y = load_breast_cancer(return_X_y=True)
+X_train, X_val, y_train, y_val = train_test_split(X, y, stratify=y, random_state=0)
+
+def evaluator(model, genes, shuffle_indices=None):
+    """Score a model fitted on X_train[:, genes]; higher is better."""
+    X_eval = X_val[:, genes]
+    if shuffle_indices:                      # FASTENER asks for permutation importance
+        X_eval = X_eval.copy()
+        for j in shuffle_indices:
+            random_utils.shuffle(X_eval[:, j])
+    return Result(f1_score(y_val, model.predict(X_eval), average="weighted"))
+
+n = X.shape[1]
 optimizer = EntropyOptimizer(
     DecisionTreeClassifier, X_train, y_train, evaluator, n,
     RandomEveryoneWithEveryone(
@@ -24,214 +68,130 @@ optimizer = EntropyOptimizer(
         mating_strategy=IntersectionMatingWithWeightedRandomInformationGain()),
     RandomFlipMutationStrategy(1 / n),
     initial_genes=[[i] for i in range(n)],
-    config=Config(output_folder="my_run", random_seed=2020, number_of_rounds=100))
+    config=Config(output_folder="my_run", random_seed=2020, number_of_rounds=50))
 optimizer.mainloop()
-optimizer.pareto_front        # {size: EvalItem}, the best subset per size
+
+for size, item in sorted(optimizer.pareto_front.items()):
+    print(size, round(item.result.score, 4))
 ```
 
-`evaluator(model, genes, shuffle_indices=None)` scores the fitted model on
-validation data and returns `Result(score)`, where higher is better. See the
-[quickstart](docs/examples/01_quickstart.py) for a complete one.
+`optimizer.pareto_front` maps each size to the best subset found
+(`item.genes`, `item.result.score`). The
+[full quickstart](docs/examples/01_quickstart.py) also holds out a test split
+and picks the smallest subset close to the best.
 
-## Variants
+## 🛠 Installation
 
-### Lineage and experiment map
+FASTENER is a directory of modules with flat imports, not a pip package.
+Clone it and put it on `sys.path`:
 
-The available Git history has one development line (`master`), from the
-2020 implementation to the current component. The branches below are
-**algorithm configurations**, rather than separate Git branches. Optional
-operators can be combined; the tree groups them by what they change.
-Experiment labels follow the companion workspace's `experiments/run_fastener.py`
-and `experiments/run_sota.py` (inventory as of 2026-10-30).
-
-```mermaid
-flowchart TD
-    O["Original FASTENER · 2020"] --> R["2020 behavior retained<br/>fastener_2020"]
-    O --> F["Both mating fixes · September 2026<br/>sample-only crossover; no self-mating"]
-    F --> S["Current stock FASTENER<br/>fastener<br/>top genes restored; no self-mating"]
-    S --> N["No swap · default pruning"]
-    S --> W["Swap added to pruning"]
-    W --> WR["Random swap<br/>fastener_swap_random"]
-    W --> WG["MI-guided swap<br/>fastener_swap_guided"]
-    S --> I["Filter-seeded initial population"]
-    I --> IM["mRMR seed<br/>fastener_seed_mrmr"]
-    I --> IB["Boruta seed<br/>fastener_seed_boruta"]
-    S --> L["LLM guidance · H8<br/>m = opus, sonnet, haiku"]
-    L --> LP["Feature prior<br/>fastener_llm_{m}"]
-    LP --> LS["Neutral-name control<br/>fastener_llm_{m}_scrambled"]
-    LP --> LB["Blind control<br/>fastener_llm_{m}_blind"]
-    LP --> LO["Prior + online subset proposer<br/>fastener_llm_{m}_proposer"]
-    LP --> LA["Opus: one use at a time<br/>fastener_llm_opus_mating<br/>fastener_llm_opus_mutation<br/>fastener_llm_opus_initial"]
+```sh
+git clone https://github.com/klemenkenda/FASTENER fastener
+pip install -r fastener/requirements.txt   # numpy, scikit-learn
+pip install Boruta                         # optional, only for seed_filter="boruta"
 ```
-
-#### Historical mating variants
-
-These flags distinguish historical versions even when their experiment
-records use the same `fastener` label. Both belong to the mating strategies.
-
-| Version | `include_top_genes` | `allow_self_mating` | History / experiment use |
-|---|---|---|---|
-| Original 2020 behavior | `True` | `True` | Initial implementation `3ddf707`; current compatibility arm `fastener_2020`, compared in H0. |
-| Both mating fixes | `False` | `False` | `564eb8a` through `144621c`; early H0 runs used this as `fastener`. Weighted crossover adds only its sample to the intersection. |
-| Current stock behavior | `True` | `False` | Since `08e6acd`: mandatory top genes restored; self-mating still disabled. Later stock and derived arms use this version. |
-
-The fourth combination (`False`, `True`) is configurable but is not a named
-arm in the current registry. Matching the flags restores the mating
-behavior; reproducing a particular run also requires matching its data
-split, model, evaluator and initial population. See [CHANGELOG.md](CHANGELOG.md) for compatibility details.
-
-#### Implemented variant families
-
-| Family / experiment label | Change from current stock | Component API and experiment use |
-|---|---|---|
-| Stock: `fastener` | Weighted MI crossover, uniform bit-flip mutation, permutation-importance deletion pruning; no extra guidance. | `swap_strategy=None`, `seed_filter=None`, no prior or proposer. The harness normally starts from five random singletons; the component accepts `initial_genes`. |
-| Random swap: `fastener_swap_random` | Also replaces a random selected feature with a uniformly random unselected feature. | `RandomSwapStrategy`; H2 and later comparisons. |
-| Guided swap: `fastener_swap_guided` | Also replaces the permutation-weakest feature with an unselected feature sampled by MI. | `InformationGainSwapStrategy`; H3 and later comparisons. Each swap candidate consumes a fit. |
-| mRMR seed: `fastener_seed_mrmr` | Starts from nested top-k subsets of an mRMR ranking. | `seed_filter="mrmr"`, `seed_size=10`; H10. |
-| Boruta seed: `fastener_seed_boruta` | Starts from nested top-k subsets of a Boruta ranking. | `seed_filter="boruta"`, `seed_size=10`; H10, H11. Boruta's ranking fits are charged to the budget. |
-| LLM prior: `fastener_llm_{m}` | Mixes MI with a relevance prior, guiding mating, mutation and five initial singletons. | `feature_prior`, `prior_weight=0.5`, `prior_uses=("mating", "mutation", "initial")`, `PriorGuidedMutationStrategy`; H8. |
-| Neutral-name control: `fastener_llm_{m}_scrambled` | The prior sees neutral feature names and no feature descriptions; column order, task, classes and dataset description remain. | A different input prior through the same guidance API; H8. |
-| Blind control: `fastener_llm_{m}_blind` | Also removes the dataset description and shuffles feature presentation order, naming features only by position. | A different input prior through the same guidance API; H8-E02 onward. |
-| Prior + proposer: `fastener_llm_{m}_proposer` | Adds online subset suggestions to the full prior-guided search. | `subset_proposer`, `proposer_every=5`; the harness requests five subsets per call. Suggestions share the evaluation budget. |
-| Single-use prior: `fastener_llm_opus_mating`, `fastener_llm_opus_mutation`, `fastener_llm_opus_initial` | Applies the Opus prior to only the named part of the search. | A one-element `prior_uses`; H8 operator ablations. |
-
-Here `{m}` expands to each of `opus`, `sonnet` and `haiku`, the model aliases
-in the registry. There are **21 registered arms**: six stock, compatibility,
-swap and seed arms; twelve LLM arms (four per model); and three Opus
-ablations. Registration describes available configurations, not evidence
-that every arm has a completed run.
-
-The component's seed API adds filter prefixes to `initial_genes`. The
-H10/H11 harness constructs the prefixes externally and passes them as the
-initial population, replacing the random singletons; it also deducts
-Boruta's ranking fits from the remaining search budget. Match these initial
-populations when comparing seeded runs.
-
-#### Options that apply across the tree
-
-- **Other operators:** `UnionMating`, `IntersectionMating`,
-  `IntersectionMatingWithInformationGain`, weighted MI mating and `NoMating`
-  (mutation-only search) are supported choices, without separate named arms
-  in the current registry. See the [operator reference](docs/reference.md).
-- **Model and task:** decision tree, random forest, LightGBM and ELM are
-  experiment model choices. The harness appends `_elm` for ELM runs.
-  [Regression](docs/regression.md) uses a regressor, a higher-is-better
-  evaluator and a regression MI hook; it is a runnable component example,
-  without a registered regression experiment arm.
-- **Run controls:** round limits, `Config.max_model_fits`, the harness CPU-time
-  cap, trajectory recording and bounded model cache apply across variants.
-  Fit and CPU budgets define different comparisons; record them with the arm.
-- **Implementation revisions:** pruning counters (`b7e724d`), vectorised
-  bookkeeping (`3877a1a`) and faster equivalent MI (`3be5697`) add observability
-  or speed while preserving search behavior. Filter seeds (`8f527ca`) and
-  outside guidance (`5261cd0`) add the optional families above.
-
-NSGA-II, POSS, FS-SDS, standalone mRMR and standalone Boruta are independent
-competitors. For run definitions and evidence, consult the companion
-workspace's `experiments/HYPOTHESES.md`, `experiments/reports/LIST.md` and
-per-run manifests, which record both repositories' revisions.
-
-### Configuring variants
-
-The call above is the base algorithm. Each variant below is one optional
-argument, off by default, and the variants combine freely. They come in two
-kinds: variants of the search operators, and LLM guidance.
-
-### Search operators
-
-| Variant | Argument | What it changes |
-|---|---|---|
-| Swap in pruning | `swap_strategy=` | Pruning also tries replacing the weakest feature with an unselected one, sampled by mutual information or at random. |
-| Filter seed | `seed_filter="mrmr"` / `"boruta"` | The search starts from the filter's nested top-k subsets. Boruta needs `pip install Boruta`. |
-| Other operators | `mating_selection_strategy`, `mutation_strategy` | Union or intersection mating, other pool sizes and mutation rates, or your own classes. |
 
 ```python
-from item import InformationGainSwapStrategy, RandomSwapStrategy
-
-# Swap in pruning: guided by mutual information, or random (the ablation)
-EntropyOptimizer(..., swap_strategy=InformationGainSwapStrategy())
-EntropyOptimizer(..., swap_strategy=RandomSwapStrategy())
-
-# Filter seed: start from mRMR's or Boruta's top 10 nested subsets
-EntropyOptimizer(..., seed_filter="mrmr", seed_size=10)
-EntropyOptimizer(..., seed_filter="boruta", seed_size=10, boruta_max_iter=100)
+import sys
+sys.path.insert(0, "path/to/fastener")
 ```
 
-### LLM guidance
+It is tested on Python 3.11 with numpy 2.4 and scikit-learn 1.9.
 
-FASTENER can be guided by a large language model. The LLM brings what the
-data cannot show: what the features mean, and what is known about the task.
-It enters the algorithm at two points.
+## 🔮 Features
 
-| Part of the algorithm | Argument | What the LLM does | When |
-|---|---|---|---|
-| **Feature prior** | `feature_prior=` | Reads the feature names, the task description and any feature descriptions, and scores each feature's likely relevance. FASTENER combines the scores with mutual information, `w = MI^(1 − λ) · prior^λ` with `λ = prior_weight`, and uses `w` to choose the genes a child inherits in mating, to bias mutation, and to draw extra single-feature starting subsets. | Once, before the search |
-| **Subset proposer** | `subset_proposer=` | Reads the current Pareto front (the features and validation score of the best subset of each size) and proposes new subsets. FASTENER evaluates them like any other candidate, and they compete for the front. | Every `proposer_every` generations |
+- **Any model, any score.** FASTENER fits your model and scores it with your
+  evaluator. It works for classification and, with a regression estimate of
+  mutual information, for [regression](docs/regression.md).
+- **A whole Pareto front per run.** The best subset of every size, not only one
+  subset.
+- **Guided genetic operators.** Crossover weighted by mutual information, bit-flip
+  mutation, and pruning by permutation importance. Union, intersection and your
+  own strategies can be plugged in.
+- **Swap in pruning** (`swap_strategy=`). Pruning also tries replacing the
+  weakest feature with another one, chosen by mutual information or at random.
+- **Filter seeds** (`seed_filter="mrmr"` / `"boruta"`). The search starts from a
+  filter's nested top-k subsets.
+- **Fit budgets** (`Config.max_model_fits`). The search stops after an exact
+  number of model fits, so variants can be compared at equal compute.
+- **LLM and expert guidance** (`feature_prior=`, `subset_proposer=`). A prior
+  biases mating, mutation and the starting subsets. A proposer suggests subsets
+  during the search. Every score still comes from your model, and FASTENER
+  itself makes no network calls. See [LLM guidance](docs/llm-guidance.md).
+- **Reproducible.** A fixed seed gives the same front. With two flags, a run is
+  identical to the 2020 code (see the [changelog](CHANGELOG.md)).
 
-The LLM never scores a subset: every score still comes from fitting your
-model and running your evaluator. With `λ = 0` the mating weights are mutual
-information alone, as without guidance. With `λ = 1` they are the LLM's
-scores alone. FASTENER records what the LLM contributed:
-`optimizer.prior_scores` holds the prior, and `optimizer.proposal_log` holds
-every proposal with its scores and the fits it cost.
-
-Both parts take a plain Python function, so any model and any provider will
-do, and FASTENER itself makes no network calls.
-[docs/examples/08_llm_guidance.py](docs/examples/08_llm_guidance.py)
-implements both through OpenRouter, with a minimal client, the prompts and
-reply parsing. `LLMFeaturePrior` and `LLMSubsetProposer` below are its two
-classes; copy them as a starting point. [docs/llm-guidance.md](docs/llm-guidance.md)
-explains both parts in full.
+Every option is off by default, and they combine freely. How the variants
+relate, from the 2020 behaviour to the current one, and which experiment arm
+uses which, is in [docs/variants.md](docs/variants.md).
 
 ```python
-from guidance import GuidanceContext, PriorGuidedMutationStrategy
-
-# What the LLM is told about the problem
-context = GuidanceContext(
-    n_features=n, feature_names=names,
-    task="Classify land cover from Sentinel-2 spectral bands",
-    class_names=classes,
-    metadata={"feature_descriptions": {...}})     # optional data dictionary
+from item import InformationGainSwapStrategy
 
 optimizer = EntropyOptimizer(
-    ..., PriorGuidedMutationStrategy(1 / n),       # mutation that follows the prior
-    guidance_context=context,
-    feature_prior=LLMFeaturePrior(),               # asks the LLM once
-    prior_weight=0.5,
-    prior_uses=("mating", "mutation", "initial"),
-    subset_proposer=LLMSubsetProposer(),           # asks the LLM every 5 generations
-    proposer_every=5)
+    ...,
+    swap_strategy=InformationGainSwapStrategy(),   # swap in pruning
+    seed_filter="mrmr", seed_size=10,              # start from mRMR's top 10
+    config=Config(..., max_model_fits=6000))       # stop after 6,000 fits
 ```
 
-The same two arguments also accept guidance that does not come from an LLM,
-such as a domain expert's ranking, another selector's scores, or a rule.
+## 🤔 Should I be using FASTENER?
 
-What changed since the 2020 paper, including two bug fixes in mating that
-change the default search, and how to reproduce the published behaviour
-exactly, is in [CHANGELOG.md](CHANGELOG.md).
+FASTENER is a **wrapper** method: it judges a subset by fitting your model on
+it and scoring it with your evaluator. That makes it accurate for your model,
+and also more costly than a filter. It is a good fit if:
 
-## Documentation
+- **The model decides what matters.** Interactions and redundancy that your
+  model actually uses count, not a proxy such as correlation with the target.
+- **You want to choose the size yourself.** The Pareto front shows how the
+  score falls as features are removed, so you can pick the smallest subset
+  that is good enough, for example for cheaper sensors, faster inference or a
+  model people can read.
+- **You have many features and fits are cheap.** Hundreds to thousands of
+  features with a decision tree, a forest or a similar fast model.
+- **You know something the data does not show.** Feature names, a data
+  dictionary or an expert's ranking can guide the search through a prior or a
+  subset proposer.
+- **You compare selectors.** Fit budgets, fixed seeds and logged fronts make
+  runs reproducible and comparable at equal compute.
 
-The [docs/](docs/README.md) directory documents FASTENER in full:
+It is probably not the right tool if:
 
-- [How the search works](docs/concepts.md): the population, the Pareto front, a generation step by step
-- [Reference](docs/reference.md): every class, parameter and attribute
-- [Examples](docs/examples.md): recipes for each option, with [runnable scripts](docs/examples/)
-- [LLM guidance](docs/llm-guidance.md): the feature prior and the subset proposer
-- [Regression](docs/regression.md): using FASTENER with a continuous target
-- [Pitfalls and questions](docs/pitfalls.md)
+- **One model fit is expensive**, for example a large neural network. A search
+  needs thousands of fits.
+- **You only need a ranking.** A filter such as mutual information, mRMR or
+  Boruta is cheaper. FASTENER can still start from such a ranking with
+  `seed_filter` and improve on it.
+- **You need a pip package or a scikit-learn transformer.** FASTENER is a
+  directory of modules. You call the optimizer and read its front yourself.
 
-## Tests
+## 🔗 Useful links
 
-Unit tests live in `tests/` and need only FASTENER's own requirements plus
-pytest. From the repo root:
+- [Documentation](docs/README.md)
+  - [How the search works](docs/concepts.md)
+  - [Reference](docs/reference.md): every class, parameter and attribute
+  - [Examples](docs/examples.md), with [ten runnable scripts](docs/examples/)
+  - [Variants](docs/variants.md): configuring the search operators and LLM guidance, and how the variants relate
+  - [LLM guidance](docs/llm-guidance.md)
+  - [Regression](docs/regression.md)
+  - [Pitfalls and questions](docs/pitfalls.md)
+- [Changelog](CHANGELOG.md): what changed since the 2020 paper
+- [Issue tracker](https://github.com/klemenkenda/FASTENER/issues)
 
-```
-pip install pytest
-python -m pytest tests
-```
+## 👐 Contributing
 
-## Citation
+Issues and pull requests are welcome. Run the unit tests before you open a pull
+request; [Tests](docs/README.md#tests) shows how and what each file covers.
+
+Changes to the search should stay off by default, so that existing runs keep
+their results. Record each one in the [changelog](CHANGELOG.md).
+
+## 🤝 Affiliations
+
+FASTENER is developed at the [Jožef Stefan Institute](https://www.ijs.si),
+Ljubljana, Slovenia.
+
+## 💬 Citation
 
 If you use FASTENER, please cite the paper:
 
@@ -278,3 +238,7 @@ Published work that applies FASTENER:
   [doi:10.70314/is.2026.sikdd.125](https://doi.org/10.70314/is.2026.sikdd.125).
   FASTENER is one of three selectors for semiconductor defect detection on SECOM,
   compared with a Pearson filter and Boruta.
+
+## 📝 License
+
+FASTENER is free and open source software under the [MIT license](LICENSE).
