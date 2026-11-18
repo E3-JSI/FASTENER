@@ -29,9 +29,12 @@ selector guide the search.
 
 FASTENER was first developed for inference from Earth observation data
 ([Entropy, 2020](https://doi.org/10.3390/e22111198)). Since then it has gained
-a swap operator, fit-capped budgets, filter seeds, outside guidance, faster
-mutual information, tests and full documentation. See the
-[changelog](CHANGELOG.md).
+**LLM-driven guidance**: a large language model reads the feature names and the
+task and scores how relevant each feature is likely to be, which biases the
+search, and it proposes new subsets while the search runs. Every score still
+comes from fitting your model ([LLM guidance](docs/llm-guidance.md)). It has
+also gained a swap operator, fit-capped budgets, filter seeds, faster mutual
+information, tests and full documentation. See the [changelog](CHANGELOG.md).
 
 ## ⚡️ Quickstart
 
