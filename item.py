@@ -2,9 +2,9 @@ import itertools
 from dataclasses import dataclass, field
 from typing import List, Optional, Callable, Dict, Tuple, Any, Set
 from abc import ABC, abstractmethod
-import sklearn.feature_selection
 import numpy as np
 
+import fast_mi
 import random_utils
 
 Genes = List[bool]
@@ -38,8 +38,12 @@ class Item:
     parent_b: Optional[Genes]
 
     def __post_init__(self) -> None:
-        self.size = sum(self.genes)
-        self.number = Item.to_number(self.genes)
+        # One numpy view for both, instead of two Python passes over all p
+        # genes: this runs for every candidate, and on wide data (p in the
+        # thousands) it dominated the search's run time.
+        arr = np.asarray(self.genes, dtype=bool)
+        self.size = int(arr.sum())
+        self.number = Item._array_to_number(arr)
 
     def evaluate(self, fitness_function: FitnessFunction) -> "EvalItem":
         result = fitness_function(self.genes)[0]
@@ -59,15 +63,25 @@ class Item:
                 reversed(bin(num)[2:].zfill(num_genes))))
     @classmethod
     def to_number(cls, genes: Genes) -> int:
-        return int(''.join(map(str, map(int, reversed(genes)))), 2)
+        return cls._array_to_number(np.asarray(genes, dtype=bool))
+
+    @staticmethod
+    def _array_to_number(arr: np.ndarray) -> int:
+        # Gene i is bit i (little endian), as the original's string encoding:
+        # the same integer, computed from packed bytes instead of a string of
+        # p characters.
+        if arr.size == 0:
+            return 0
+        return int.from_bytes(np.packbits(arr, bitorder="little").tobytes(),
+                              "little")
 
     @staticmethod
     def gene_union(g1: Genes, g2: Genes) -> Genes:
-        return [i or j for i, j in zip(g1, g2)]
+        return (np.asarray(g1, dtype=bool) | np.asarray(g2, dtype=bool)).tolist()
 
     @staticmethod
     def gene_intersection(g1: Genes, g2: Genes) -> Genes:
-        return [i and j for i, j in zip(g1, g2)]
+        return (np.asarray(g1, dtype=bool) & np.asarray(g2, dtype=bool)).tolist()
 
     @classmethod
     def from_genes(cls, genes: Genes, generation: int = 0) -> "Item":
@@ -75,8 +89,9 @@ class Item:
 
     @classmethod
     def indexed_symmetric_difference(cls, g1: Genes, g2: Genes) -> List[int]:
-        # XOR
-        return [ind for ind, (i, j) in enumerate(zip(g1, g2)) if (i != j)]
+        # XOR, as ascending indices
+        return np.flatnonzero(np.asarray(g1, dtype=bool)
+                              != np.asarray(g2, dtype=bool)).tolist()
 
 
 @dataclass
@@ -154,8 +169,10 @@ class IntersectionMatingWithInformationGain(IntersectionMating):
 
     def use_data_information(self, train_data: np.array,
                              train_target: np.array) -> None:
-        self.scikit_information_gain = sklearn.feature_selection.\
-            mutual_info_classif(train_data, train_target)
+        # scikit-learn's estimator, computed by sorting each feature: the same
+        # values and the same random draws, several times faster (fast_mi.py).
+        self.scikit_information_gain = fast_mi.mutual_info_classif(
+            train_data, train_target)
 
     def mate_internal(self, item1: Item, item2: Item) -> Genes:
         genes = super().mate_internal(item1, item2)
@@ -175,17 +192,26 @@ class IntersectionMatingWithInformationGain(IntersectionMating):
 class IntersectionMatingWithWeightedRandomInformationGain(
     IntersectionMatingWithInformationGain):
     def __init__(self, number: Optional[IntScaling] = None,
-                 scaling=None) -> None:
+                 scaling=None, include_top_genes: bool = True) -> None:
         super().__init__(number)
         self.number = number or self.default_number
         self.scaling = scaling or self.default_scaling
+        # True (the default, as in the original) starts from the parent
+        # class's child -- the intersection plus the top-k genes by information
+        # gain -- and then samples k more, so the top-k are always included and
+        # a child gets up to 2k genes back (1.3k on average). False starts from
+        # the plain intersection and adds only the weighted sample.
+        self.include_top_genes = include_top_genes
 
     @staticmethod
     def default_scaling(x):
         return np.log1p(np.log1p(np.log1p(x)))
 
     def mate_internal(self, item1: Item, item2: Item) -> Genes:
-        genes = super().mate_internal(item1, item2)
+        if self.include_top_genes:
+            genes = super().mate_internal(item1, item2)
+        else:
+            genes = IntersectionMating.mate_internal(self, item1, item2)
         ma = max(item1.size, item2.size)
         mi = min(item1.size, item2.size)
 
@@ -251,16 +277,29 @@ class MatingSelectionStrategy(ABC):
 class RandomEveryoneWithEveryone(MatingSelectionStrategy):
 
     def __init__(self, mating_strategy: MatingStrategy = UnionMating(),
-                 pool_size: int = 10):
+                 pool_size: Optional[int] = 10,
+                 allow_self_mating: bool = False):
         super().__init__(mating_strategy)
         self.pool_size = pool_size
+        # The original draws the pool with replacement, so an item can land in
+        # it twice and be mated with itself; its child is a copy of the parent,
+        # which costs a crossover slot. Measured at ~13% of pairs with
+        # pool_size=3. True restores that draw exactly, random stream included,
+        # for reproducing results produced before this was changed.
+        self.allow_self_mating = allow_self_mating
 
     def mating_pool(self, population: Population) -> MatingPoolResult:
         flatten = flatten_population(population)
         pool_size = self.pool_size if self.pool_size is not None else len(
             flatten)
-        return MatingPoolResult(random_utils.choices(flatten, size=self.pool_size),
-                                flatten)
+        if self.allow_self_mating:
+            pool = random_utils.choices(flatten, size=pool_size)
+        else:
+            # Without replacement the pool can be no larger than the population.
+            indices = random_utils.choices(
+                len(flatten), size=min(pool_size, len(flatten)), replace=False)
+            pool = [flatten[i] for i in indices]
+        return MatingPoolResult(pool, flatten)
 
     def mate_pool(self, mating_pool: List["EvalItem"],
                   current_generation: int = 0) -> List[Item]:
@@ -317,8 +356,159 @@ class RandomFlipMutationStrategy(MutationStrategy):
         self.prob = prob
 
     def mutate_internal(self, item: "Item") -> Genes:
-        genes = [
-            not j if random_utils.random() < self.prob else j
-            for j in item.genes
-        ]
+        # One draw per gene, as before, but in a single call: numpy's legacy
+        # generator yields the same numbers for random(size=n) as for n calls
+        # of random(), so the random stream -- and every later draw -- is
+        # unchanged.
+        flip = random_utils.random(len(item.genes)) < self.prob
+        genes = (np.asarray(item.genes, dtype=bool) ^ flip).tolist()
         return genes
+
+
+class SwapStrategy(ABC):
+    """Size-preserving replacement operator for the pruning step.
+
+    FASTENER's pruning only ever tests *deleting* the weakest feature of a
+    subset. No operator in the algorithm preserves the subset size: mating pulls
+    a child towards the middle size, pruning strictly decreases it, and mutation
+    holds the size constant only when two bits happen to flip at once. A swap is
+    that missing operator: it drops one selected feature and inserts one
+    unselected feature in its place, so the candidate has the same size as its
+    parent and competes directly against the front entry at that size.
+
+    The strategy only *proposes* candidates; the optimizer evaluates them and
+    passes them through the usual Pareto update. Swapping is opt-in -- with no
+    swap strategy the optimizer runs the original deletion-only pruning.
+    """
+
+    def __init__(self, number_of_swaps: int = 1) -> None:
+        # How many replacement candidates to propose per pruned subset. Each one
+        # costs a model fit, so the default is a single candidate.
+        self.number_of_swaps = number_of_swaps
+
+    def use_data_information(self, train_data: np.array, train_target: np.array,
+                             information_gain: Optional[np.array] = None) -> None:
+        """Hook mirroring ``MatingStrategy.use_data_information``.
+
+        ``information_gain`` is the mutual-information vector the mating
+        strategy has already computed over the whole dataset, handed over so a
+        guided swap does not pay for a second ``mutual_info_classif`` pass. It
+        is ``None`` when the mating strategy does not compute one.
+        """
+
+    @abstractmethod
+    def select_removal(self, genes: Genes,
+                       changes: List[Tuple[float, int]]) -> int:
+        """Index of the selected feature to drop.
+
+        ``changes`` are the permutation-importance results the pruning step has
+        already computed, as ``(score_drop, gene_index)`` sorted ascending, so
+        ``changes[0]`` is the feature the model minds losing least.
+        """
+
+    @abstractmethod
+    def select_insertions(self, genes: Genes, removed: int,
+                          count: int) -> List[int]:
+        """Indices of unselected features to try in the removed one's place."""
+
+    def propose(self, item: "Item",
+                changes: List[Tuple[float, int]]) -> List["Item"]:
+        """Swap candidates for ``item``, unevaluated. Empty if none apply."""
+        if not changes or all(item.genes):
+            # Nothing to remove, or nothing left to insert.
+            return []
+
+        removed = self.select_removal(item.genes, changes)
+        candidates: List["Item"] = []
+        seen: Set[int] = set()
+        for added in self.select_insertions(item.genes, removed,
+                                            self.number_of_swaps):
+            if added in seen or item.genes[added]:
+                continue
+            seen.add(added)
+            genes = list(item.genes)
+            genes[removed] = False
+            genes[added] = True
+            candidates.append(Item(genes, item.generation + 1, None, None))
+        return candidates
+
+
+class RandomSwapStrategy(SwapStrategy):
+    """Unguided swap: random feature out, uniformly random feature in.
+
+    The ablation arm. It uses neither the permutation scores nor the mutual
+    information, so comparing it against the guided strategy isolates the value
+    of the guidance rather than of swapping as such.
+    """
+
+    def select_removal(self, genes: Genes,
+                       changes: List[Tuple[float, int]]) -> int:
+        on_genes = np.where(genes)[0]
+        return int(random_utils.choices(on_genes))
+
+    def select_insertions(self, genes: Genes, removed: int,
+                          count: int) -> List[int]:
+        off_genes = np.where(np.logical_not(genes))[0]
+        if not off_genes.size:
+            return []
+        return [int(i) for i in random_utils.choices(
+            off_genes, size=min(count, off_genes.size), replace=False)]
+
+
+class InformationGainSwapStrategy(SwapStrategy):
+    """Guided swap: permutation-weakest feature out, MI-weighted feature in.
+
+    Both ends reuse information FASTENER already computes -- the permutation
+    scores from the pruning step itself, and the mutual-information vector from
+    the mating strategy -- so the guidance costs no extra scoring pass. Sampling
+    the inserted feature (rather than taking the MI-best one) keeps the search
+    stochastic; on a dataset like MADELON the MI-best unselected feature would
+    otherwise be proposed over and over, and `cached_fitness` would make every
+    repeat a no-op.
+    """
+
+    def __init__(self, number_of_swaps: int = 1, scaling=None) -> None:
+        super().__init__(number_of_swaps)
+        self.scaling = scaling or \
+            IntersectionMatingWithWeightedRandomInformationGain.default_scaling
+        self.scikit_information_gain: List[float] = []
+
+    def use_data_information(self, train_data: np.array, train_target: np.array,
+                             information_gain: Optional[np.array] = None) -> None:
+        if information_gain is not None and len(information_gain):
+            # Reuse the mating strategy's vector: same numbers, no second pass.
+            self.scikit_information_gain = information_gain
+        else:
+            self.scikit_information_gain = fast_mi.mutual_info_classif(
+                train_data, train_target)
+
+    def select_removal(self, genes: Genes,
+                       changes: List[Tuple[float, int]]) -> int:
+        # changes is sorted ascending by score drop, so the first entry is the
+        # feature whose permutation cost the least -- the same feature the
+        # original pruning step would have deleted.
+        return int(changes[0][1])
+
+    def select_insertions(self, genes: Genes, removed: int,
+                          count: int) -> List[int]:
+        off_genes = np.where(np.logical_not(genes))[0]
+        if not off_genes.size:
+            return []
+
+        weights = np.asarray(
+            self.scaling([self.scikit_information_gain[i] for i in off_genes]),
+            dtype=float)
+        weights[~np.isfinite(weights)] = 0.0
+        weights[weights < 0] = 0.0
+
+        size = min(count, off_genes.size)
+        if weights.sum() == 0:
+            # Every candidate is uninformative -- fall back to uniform.
+            weights = np.ones_like(weights)
+        elif int((weights > 0).sum()) < size:
+            # Sampling without replacement needs at least `size` non-zero
+            # weights; keep zero-information features reachable but negligible.
+            weights = weights + 1e-12
+
+        return [int(i) for i in random_utils.choices(
+            off_genes, p=weights / weights.sum(), size=size, replace=False)]

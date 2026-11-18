@@ -1,8 +1,36 @@
-joblib==0.14.1
-mypy==0.761
-mypy-extensions==0.4.3
-numpy==1.18.1
-scikit-learn==0.22.2.post1
-scipy==1.4.1
-typed-ast==1.4.1
-typing-extensions==3.7.4.1
+# FASTENER runtime requirements.
+#
+# Previously pinned to a 2020 stack (numpy==1.18.1, scikit-learn==0.22.2.post1,
+# scipy==1.4.1, joblib==0.14.1) that no longer installs on current Python. The
+# algorithm itself needed no changes to move off it: its whole third-party
+# surface is numpy plus three long-stable scikit-learn entry points --
+# DecisionTreeClassifier, f1_score and mutual_info_classif -- and it uses none
+# of the numpy aliases (np.int, np.float, np.bool) that numpy 1.24/2.0 removed.
+#
+# Verified end-to-end on Python 3.11.16 with numpy 2.4.6 and scikit-learn 1.9.0:
+# imports clean with no deprecation warnings, and a full mainloop() recovers the
+# expected Pareto front on the dummy data. Floors below are set well under that,
+# since nothing in the code requires a recent API; they exist to exclude the
+# versions that are actually too old, not to assert an upper bound that was
+# never tested.
+
+numpy>=1.24           # 1.24 removed np.int/np.float; nothing here used them
+scikit-learn>=1.0
+
+# --- optional ---
+# Boruta: only for EntropyOptimizer(seed_filter="boruta"); imported lazily.
+#
+#     pip install Boruta
+
+# scipy and joblib were listed before, but no module in this repo imports
+# either. They are scikit-learn's own dependencies and pip resolves them, so
+# declaring them here only invited them to drift out of step with it.
+
+# --- development only ---
+# mypy was pinned at 0.761 with its era's transitive deps (typed-ast,
+# mypy-extensions, typing-extensions). The repo ships no mypy config and mypy is
+# not needed to run anything, so those are dropped; modern mypy resolves its own
+# dependencies, and typed-ast is obsolete on supported Pythons. Install on
+# demand if you want to typecheck the annotations:
+#
+#     pip install mypy
