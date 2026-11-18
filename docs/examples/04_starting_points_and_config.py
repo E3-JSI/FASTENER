@@ -5,19 +5,19 @@ The search needs at least one evaluated subset to start from. Give it
 (unevaluated `Item`s grouped by size), a filter seed (example 07) or a
 feature prior (example 08) -- or several of these at once.
 """
-from _common import ValidationEvaluator, classification_data, front_table, run_folder
+from _common import classification_data, front_table, run_folder
 
 import numpy as np
-from sklearn.metrics import balanced_accuracy_score
 from sklearn.tree import DecisionTreeClassifier
 
+from evaluators import Evaluator
 from fastener import Config, EntropyOptimizer
 from item import (IntersectionMatingWithWeightedRandomInformationGain, Item,
                   RandomEveryoneWithEveryone, RandomFlipMutationStrategy)
 
 X_train, y_train, X_val, y_val, X_test, y_test, names = classification_data()
 n = X_train.shape[1]
-evaluator = ValidationEvaluator(X_val, y_val, balanced_accuracy_score)
+evaluator = Evaluator(X_val, y_val, "balanced_accuracy")
 
 
 def optimizer_with(config, **kwargs):

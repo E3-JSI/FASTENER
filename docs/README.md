@@ -49,20 +49,13 @@ from item import Result, RandomEveryoneWithEveryone, RandomFlipMutationStrategy
 ## A minimal run
 
 ```python
-import random_utils
+from evaluators import Evaluator
 from fastener import Config, EntropyOptimizer
 from item import (IntersectionMatingWithWeightedRandomInformationGain,
-                  RandomEveryoneWithEveryone, RandomFlipMutationStrategy, Result)
-from sklearn.metrics import f1_score
+                  RandomEveryoneWithEveryone, RandomFlipMutationStrategy)
 from sklearn.tree import DecisionTreeClassifier
 
-def evaluator(model, genes, shuffle_indices=None):
-    X = X_val[:, genes]
-    if shuffle_indices:                      # permutation importance calls
-        X = X.copy()
-        for j in shuffle_indices:
-            random_utils.shuffle(X[:, j])
-    return Result(f1_score(y_val, model.predict(X), average="weighted"))
+evaluator = Evaluator(X_val, y_val, "f1")    # weighted F1 on the validation split
 
 n = X_train.shape[1]
 optimizer = EntropyOptimizer(

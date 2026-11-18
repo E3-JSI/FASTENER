@@ -3,6 +3,46 @@
 Changes to FASTENER since the version published in *Entropy* (2020). For the
 paper, see the Citation section of [README.md](README.md).
 
+## 2026-11-18 — Ready-made evaluators
+
+`evaluators.Evaluator(X_val, y_val, metric="f1", **metric_kwargs)` scores a
+fitted model on validation data, so a run no longer needs a hand-written
+evaluator. One class covers the common metrics by name: `"f1"`,
+`"precision"`, `"recall"` (weighted by default), `"accuracy"`,
+`"balanced_accuracy"`, `"matthews"`, `"roc_auc"` and `"log_loss"` (from
+`predict_proba`), and for regression `"r2"`, `"mae"`, `"mse"` and `"rmse"`.
+Errors are returned negated, so higher is always better. Keyword arguments
+go to the scikit-learn metric (`average="macro"`, `pos_label=0`).
+
+```python
+from evaluators import Evaluator
+
+Evaluator(X_val, y_val)                          # weighted F1
+Evaluator(X_val, y_val, "rmse")                  # -RMSE
+Evaluator(X_val, y_val, my_metric)               # my_metric(y_true, y_pred)
+```
+
+For your own scoring, pass a module-level function `metric(y_true, y_pred)`
+(`greater_is_better=False` for an error, `use_proba=True` for
+probabilities), or subclass `Evaluator` and override
+`score(model, X_eval)`. Either way, `Evaluator` still handles the
+permutation-importance calls.
+
+**Same search.** For permutation importance it shuffles the requested
+columns of a copy with `random_utils.shuffle`, in the same order as the
+evaluators in the earlier examples, so a run with it gives the same front, fits and
+random stream as with the equivalent hand-written evaluator (tested in
+`tests/test_evaluators.py`). The examples now use it. The examples' own
+`ValidationEvaluator` and `RegressionEvaluator` are removed.
+
+**`dummy_data.py` removed.** It only served a demo `main()` in `fastener.py`,
+also removed. Its import ran on every `import fastener`: it built 100,000
+synthetic samples and seeded numpy's global generator with 202000. Importing
+`fastener` now does neither. A run seeded by `Config(random_seed=...)` is
+unchanged, since the `Config` reseeds the generator. Code that drew from
+`np.random` without a seed of its own after importing `fastener` used to get
+a fixed stream, and now does not.
+
 ## 2026-10-29 — Outside guidance: a feature prior and a subset proposer (off by default)
 
 Two hooks let the caller guide the search with knowledge FASTENER does not

@@ -24,7 +24,7 @@ Without a key the script still runs, with rule-based stand-ins in place of
 the LLM. It says so at the start, so its output is not mistaken for LLM
 guidance.
 """
-from _common import ValidationEvaluator, classification_data, front_table, run_folder
+from _common import classification_data, front_table, run_folder
 
 import json
 import os
@@ -32,9 +32,9 @@ import re
 import urllib.request
 
 import numpy as np
-from sklearn.metrics import balanced_accuracy_score
 from sklearn.tree import DecisionTreeClassifier
 
+from evaluators import Evaluator
 from fastener import Config, EntropyOptimizer
 from guidance import GuidanceContext, PriorGuidedMutationStrategy
 from item import (IntersectionMatingWithWeightedRandomInformationGain,
@@ -210,7 +210,7 @@ def main():
     def run(name, **guidance):
         optimizer = EntropyOptimizer(
             DecisionTreeClassifier, X_train, y_train,
-            ValidationEvaluator(X_val, y_val, balanced_accuracy_score), n,
+            Evaluator(X_val, y_val, "balanced_accuracy"), n,
             RandomEveryoneWithEveryone(
                 pool_size=3,
                 mating_strategy=IntersectionMatingWithWeightedRandomInformationGain()),

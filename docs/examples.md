@@ -4,10 +4,10 @@ Every recipe here comes from a script in [examples/](examples/) that runs
 as is. The snippets leave out imports and data loading. The scripts have
 them.
 
-Most scripts share two helpers from [examples/_common.py](examples/_common.py):
-`classification_data()` (breast cancer, 569 × 30, split 50/25/25 into
-train / validation / test) and `ValidationEvaluator(X_val, y_val, score)`, a
-picklable evaluator for any `score(y_true, y_pred)`.
+Most scripts load their data with `classification_data()` from
+[examples/_common.py](examples/_common.py) (breast cancer, 569 × 30, split
+50/25/25 into train / validation / test), and score subsets with
+`Evaluator(X_val, y_val, metric)` from FASTENER's `evaluators` module.
 
 These runs use one seed on one small data set, so they show *how* to use an
 option, not whether it helps. Compare options with several seeds, at an equal
@@ -16,14 +16,14 @@ option, not whether it helps. Compare options with several seeds, at an equal
 | Script | Shows |
 |---|---|
 | [01_quickstart.py](examples/01_quickstart.py) | A complete run, choosing a subset from the front, testing it |
-| [02_models_and_metrics.py](examples/02_models_and_metrics.py) | Trees, forests, pipelines; balanced accuracy, ROC AUC, a size penalty |
+| [02_models_and_metrics.py](examples/02_models_and_metrics.py) | Trees, forests, pipelines; the built-in metrics; your own metric, a subclass, an evaluator from scratch |
 | [03_mating_and_mutation.py](examples/03_mating_and_mutation.py) | Every mating strategy, pool sizes, mutation rates, the 2020 behaviour |
 | [04_starting_points_and_config.py](examples/04_starting_points_and_config.py) | `initial_genes`, `initial_population`, `Config` knobs, the cache |
 | [05_budget_outputs_and_logs.py](examples/05_budget_outputs_and_logs.py) | `max_model_fits`, what a run reports, reading the log pickles |
 | [06_swap_operator.py](examples/06_swap_operator.py) | Guided and random swaps in the pruning step |
 | [07_filter_seeds.py](examples/07_filter_seeds.py) | mRMR and Boruta seeds, and the filters on their own |
 | [08_llm_guidance.py](examples/08_llm_guidance.py) | LLM guidance: an LLM feature prior and an LLM subset proposer through OpenRouter |
-| [09_regression.py](examples/09_regression.py) | Regression: MI for a continuous target, R² and −RMSE, a Boruta seed |
+| [09_regression.py](examples/09_regression.py) | Regression: MI for a continuous target, R² and RMSE, a Boruta seed |
 | [10_custom_strategies.py](examples/10_custom_strategies.py) | Your own mutation, crossover, parent selection and swap |
 
 ---
@@ -33,13 +33,8 @@ option, not whether it helps. Compare options with several seeds, at an equal
 ### The smallest complete run
 
 ```python
-def evaluator(model, genes, shuffle_indices=None):
-    X_eval = X_val[:, genes]
-    if shuffle_indices:
-        X_eval = X_eval.copy()
-        for j in shuffle_indices:
-            random_utils.shuffle(X_eval[:, j])
-    return Result(f1_score(y_val, model.predict(X_eval), average="weighted"))
+evaluator = Evaluator(X_val, y_val, "f1")    # weighted F1 on validation
+
 
 n = X_train.shape[1]
 optimizer = EntropyOptimizer(
@@ -91,6 +86,10 @@ print(f1_score(y_test, model.predict(X_test[:, cols]), average="weighted"))
 
 The model is a factory called with no arguments. The evaluator is any
 picklable callable returning `Result(score)`, higher is better.
+`evaluators.Evaluator` covers "f1", "precision", "recall", "accuracy",
+"balanced_accuracy", "matthews", "roc_auc", "log_loss", "r2", "mae", "mse"
+and "rmse" (errors are negated). For anything else, write your own in one
+of three ways:
 
 ```python
 # Hyperparameters with functools.partial
@@ -104,21 +103,43 @@ def scaled_logistic():
     return make_pipeline(StandardScaler(), LogisticRegression(max_iter=500))
 
 # Balanced accuracy on the validation split
-evaluator = ValidationEvaluator(X_val, y_val, balanced_accuracy_score)
+evaluator = Evaluator(X_val, y_val, "balanced_accuracy")
 
-# A probability-based score: write the evaluator out
-def auc_evaluator(model, genes, shuffle_indices=None):
-    X_eval = X_val[:, genes]
-    if shuffle_indices:
-        X_eval = X_eval.copy()
-        for j in shuffle_indices:
-            random_utils.shuffle(X_eval[:, j])
-    return Result(roc_auc_score(y_val, model.predict_proba(X_eval)[:, 1]))
+# Keyword arguments go to the metric: recall of class 0
+Evaluator(X_val, y_val, "recall", average="binary", pos_label=0)
 
-# A score that charges for size (rarely needed: the front already
-# gives one subset per size)
-def penalised(model, genes, shuffle_indices=None):
-    return Result(balanced(model, genes, shuffle_indices).score - 0.002 * sum(genes))
+# A probability-based score ("roc_auc", "log_loss" call predict_proba)
+Evaluator(X_val, y_val, "roc_auc")
+
+# Your own metric: a module-level function metric(y_true, y_pred)
+def f2(y_true, y_pred):
+    return fbeta_score(y_true, y_pred, beta=2, pos_label=0)
+
+Evaluator(X_val, y_val, f2)    # greater_is_better=False for an error,
+                               # use_proba=True for probabilities
+
+# Your own scoring of the model: override score(model, X_eval). X_eval is
+# the selected validation columns, already shuffled for permutation calls.
+class ConfidentAccuracy(Evaluator):
+    def score(self, model, X_eval):
+        proba = model.predict_proba(X_eval)
+        right = model.classes_[proba.argmax(axis=1)] == self.y_val
+        return float(np.mean(right & (proba.max(axis=1) >= 0.8)))
+
+# An evaluator from scratch: any picklable callable with this signature.
+# It shuffles the columns at shuffle_indices of a copy, with random_utils.
+class PenalisedAccuracy:
+    def __init__(self, X_val, y_val, penalty=0.002):
+        self.X_val, self.y_val, self.penalty = X_val, y_val, penalty
+
+    def __call__(self, model, genes, shuffle_indices=None):
+        X_eval = self.X_val[:, genes]
+        if shuffle_indices:
+            X_eval = X_eval.copy()
+            for j in shuffle_indices:
+                random_utils.shuffle(X_eval[:, j])
+        accuracy = np.mean(model.predict(X_eval) == self.y_val)
+        return Result(float(accuracy - self.penalty * sum(genes)))
 ```
 
 ---
@@ -331,7 +352,7 @@ class RegressionMating(IntersectionMatingWithWeightedRandomInformationGain):
             train_data, train_target, random_state=0)
 
 EntropyOptimizer(partial(DecisionTreeRegressor, min_samples_leaf=5),
-                 X_train, y_train, RegressionEvaluator(X_val, y_val, "r2"), n,
+                 X_train, y_train, Evaluator(X_val, y_val, "r2"), n,
                  RandomEveryoneWithEveryone(pool_size=3,
                                             mating_strategy=RegressionMating()),
                  RandomFlipMutationStrategy(1 / n), initial_genes=singles, config=...)

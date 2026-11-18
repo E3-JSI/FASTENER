@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from functools import wraps
 
 import random_utils
-from random_utils import shuffle
 from typing import Dict, List, Callable, Any, Tuple, Optional, \
     Counter as CounterType, Set
 import numpy as np
@@ -626,51 +625,3 @@ class EntropyOptimizer:
             for num, items in un_pop.items()
         }
 
-
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import f1_score
-
-general_model = DecisionTreeClassifier
-from dummy_data import XX_train, XX_test, labels_train, labels_test
-
-
-def eval_fun(model: Any, genes: "Genes",
-             shuffle_indices: Optional[List[int]] = None) -> "Result":
-    test_data = XX_test[:, genes]
-    if shuffle_indices:
-        test_data = test_data.copy()
-        for j in shuffle_indices:
-            shuffle(test_data[:, j])
-    pred = model.predict(test_data)
-    res = Result(f1_score(labels_test, pred, average='weighted'))
-    return res
-
-
-def main() -> None:
-
-    number_of_genes = XX_train.shape[1]
-
-    initial_genes = [
-        [0]
-    ]
-
-    # Select mating strategies
-    mating = RandomEveryoneWithEveryone(
-        pool_size=3,
-        mating_strategy=IntersectionMatingWithWeightedRandomInformationGain())
-
-    # Random mutation
-    mutation = RandomFlipMutationStrategy(1 / number_of_genes)
-
-    entropy_optimizer = EntropyOptimizer(
-        general_model, XX_train, labels_train, eval_fun,
-        number_of_genes, mating, mutation, initial_genes=initial_genes,
-        config=Config(output_folder="dummy_data_output", random_seed=2020,
-                      reset_to_pareto_rounds=5)
-    )
-
-    entropy_optimizer.mainloop()
-
-
-if __name__ == '__main__':
-    main()

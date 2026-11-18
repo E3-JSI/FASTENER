@@ -6,11 +6,11 @@ tries the subset without it. A swap strategy also tries *replacing* that
 feature with one that is not selected, so the candidate competes with the
 front entry of the same size. Each swap candidate costs one model fit.
 """
-from _common import ValidationEvaluator, classification_data, front_table, run_folder
+from _common import classification_data, front_table, run_folder
 
-from sklearn.metrics import balanced_accuracy_score
 from sklearn.tree import DecisionTreeClassifier
 
+from evaluators import Evaluator
 from fastener import Config, EntropyOptimizer
 from item import (InformationGainSwapStrategy,
                   IntersectionMatingWithWeightedRandomInformationGain,
@@ -19,7 +19,7 @@ from item import (InformationGainSwapStrategy,
 
 X_train, y_train, X_val, y_val, X_test, y_test, names = classification_data()
 n = X_train.shape[1]
-evaluator = ValidationEvaluator(X_val, y_val, balanced_accuracy_score)
+evaluator = Evaluator(X_val, y_val, "balanced_accuracy")
 
 SWAPS = {
     "no swap (published algorithm)": None,
