@@ -6,24 +6,13 @@ regression problem needs three changes, and the first two are required.
 
 ## 1. A score where higher is better
 
-Return R², or the negative of an error:
+Use R², or an error, which `Evaluator` returns negated:
 
 ```python
-class RegressionEvaluator:
-    SCORES = {"r2": r2_score,
-              "neg_rmse": lambda y, p: -root_mean_squared_error(y, p),
-              "neg_mae": lambda y, p: -mean_absolute_error(y, p)}
+from evaluators import Evaluator
 
-    def __init__(self, X_val, y_val, score="r2"):
-        self.X_val, self.y_val, self.score = X_val, y_val, score
-
-    def __call__(self, model, genes, shuffle_indices=None):
-        X_eval = self.X_val[:, genes]
-        if shuffle_indices:
-            X_eval = X_eval.copy()
-            for j in shuffle_indices:
-                random_utils.shuffle(X_eval[:, j])
-        return Result(self.SCORES[self.score](self.y_val, model.predict(X_eval)))
+Evaluator(X_val, y_val, "r2")
+Evaluator(X_val, y_val, "rmse")    # scored as -RMSE; also "mae", "mse"
 ```
 
 R² and −RMSE order subsets identically on a fixed validation set, so they

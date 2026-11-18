@@ -14,13 +14,13 @@ Each operator is a small abstract class in `item.py`:
 `random_utils`, which `Config(random_seed=...)` seeds, so runs repeat.
 Strategies are pickled with the optimizer: keep them module-level classes.
 """
-from _common import ValidationEvaluator, classification_data, front_table, run_folder
+from _common import classification_data, front_table, run_folder
 
 import numpy as np
-from sklearn.metrics import balanced_accuracy_score
 from sklearn.tree import DecisionTreeClassifier
 
 import random_utils
+from evaluators import Evaluator
 from fastener import Config, EntropyOptimizer
 from item import (IntersectionMatingWithWeightedRandomInformationGain,
                   MatingPoolResult, MatingSelectionStrategy, MatingStrategy,
@@ -29,7 +29,7 @@ from item import (IntersectionMatingWithWeightedRandomInformationGain,
 
 X_train, y_train, X_val, y_val, X_test, y_test, names = classification_data()
 n = X_train.shape[1]
-evaluator = ValidationEvaluator(X_val, y_val, balanced_accuracy_score)
+evaluator = Evaluator(X_val, y_val, "balanced_accuracy")
 
 
 class SizeCappedMutation(MutationStrategy):

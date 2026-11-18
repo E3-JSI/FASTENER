@@ -5,16 +5,16 @@ is how two settings are compared at equal compute. After `mainloop` the
 optimizer holds the front and counters; with `dump_generation_logs=True`
 every generation is also pickled to log/<folder>/generation_N.pickle.
 """
-from _common import ValidationEvaluator, classification_data, front_table, run_folder
+from _common import classification_data, front_table, run_folder
 
 import glob
 import os
 import pickle
 
 import numpy as np
-from sklearn.metrics import balanced_accuracy_score
 from sklearn.tree import DecisionTreeClassifier
 
+from evaluators import Evaluator
 from fastener import Config, EntropyOptimizer
 from item import (IntersectionMatingWithWeightedRandomInformationGain,
                   RandomEveryoneWithEveryone, RandomFlipMutationStrategy)
@@ -29,7 +29,7 @@ config = Config(output_folder=run_folder("budget"), random_seed=11,
                 dump_generation_logs=True)  # the default; False for batches
 optimizer = EntropyOptimizer(
     DecisionTreeClassifier, X_train, y_train,
-    ValidationEvaluator(X_val, y_val, balanced_accuracy_score), n,
+    Evaluator(X_val, y_val, "balanced_accuracy"), n,
     RandomEveryoneWithEveryone(
         pool_size=3,
         mating_strategy=IntersectionMatingWithWeightedRandomInformationGain()),

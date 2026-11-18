@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="FASTENER">
+  <title>FASTENER</title>
+  <rect x="8" y="8" width="104" height="104" rx="22" fill="#1f3a5f" stroke="#16304f" stroke-width="3"/>
+  <path d="M50 8 H70 V60 L92 112 H74 L60 74 L46 112 H28 L50 60 Z" fill="#2c4f7c"/>
+  <rect x="44" y="13" width="18" height="6" rx="2" fill="#ffffff"/>
+  <rect x="58" y="21" width="18" height="6" rx="2" fill="#f5a623"/>
+  <rect x="44" y="29" width="18" height="6" rx="2" fill="#f5a623"/>
+  <rect x="58" y="37" width="18" height="6" rx="2" fill="#ffffff"/>
+  <rect x="44" y="45" width="18" height="6" rx="2" fill="#f5a623"/>
+  <rect x="58" y="53" width="18" height="6" rx="2" fill="#ffffff"/>
+  <rect x="38.0" y="78.0" width="18" height="6" rx="2" fill="#ffffff" transform="rotate(24 47.0 81.0)"/>
+  <rect x="30.0" y="89.0" width="18" height="6" rx="2" fill="#ffffff" transform="rotate(24 39.0 92.0)"/>
+  <rect x="22.0" y="100.0" width="18" height="6" rx="2" fill="#ffffff" transform="rotate(24 31.0 103.0)"/>
+  <rect x="64.0" y="78.0" width="18" height="6" rx="2" fill="#f5a623" transform="rotate(-24 73.0 81.0)"/>
+  <rect x="72.0" y="89.0" width="18" height="6" rx="2" fill="#ffffff" transform="rotate(-24 81.0 92.0)"/>
+  <rect x="80.0" y="100.0" width="18" height="6" rx="2" fill="#ffffff" transform="rotate(-24 89.0 103.0)"/>
+  <path d="M45 58 H75 L70 78 H50 Z" fill="#dfe6ee" stroke="#0f2440" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="55" y="74" width="10" height="28" rx="5" fill="#dfe6ee" stroke="#0f2440" stroke-width="3"/>
+  <circle cx="60" cy="94" r="2.5" fill="#0f2440"/>
+</svg>

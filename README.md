@@ -42,30 +42,22 @@ Select features for a decision tree on the breast-cancer data:
 
 ```python
 from sklearn.datasets import load_breast_cancer
-from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 
-import random_utils
+from evaluators import Evaluator
 from fastener import Config, EntropyOptimizer
 from item import (IntersectionMatingWithWeightedRandomInformationGain,
-                  RandomEveryoneWithEveryone, RandomFlipMutationStrategy, Result)
+                  RandomEveryoneWithEveryone, RandomFlipMutationStrategy)
 
 X, y = load_breast_cancer(return_X_y=True)
 X_train, X_val, y_train, y_val = train_test_split(X, y, stratify=y, random_state=0)
 
-def evaluator(model, genes, shuffle_indices=None):
-    """Score a model fitted on X_train[:, genes]; higher is better."""
-    X_eval = X_val[:, genes]
-    if shuffle_indices:                      # FASTENER asks for permutation importance
-        X_eval = X_eval.copy()
-        for j in shuffle_indices:
-            random_utils.shuffle(X_eval[:, j])
-    return Result(f1_score(y_val, model.predict(X_eval), average="weighted"))
-
 n = X.shape[1]
 optimizer = EntropyOptimizer(
-    DecisionTreeClassifier, X_train, y_train, evaluator, n,
+    DecisionTreeClassifier, X_train, y_train,
+    Evaluator(X_val, y_val, "f1"),          # score subsets by F1 on validation
+    n,
     RandomEveryoneWithEveryone(
         pool_size=3,
         mating_strategy=IntersectionMatingWithWeightedRandomInformationGain()),
@@ -82,6 +74,47 @@ for size, item in sorted(optimizer.pareto_front.items()):
 (`item.genes`, `item.result.score`). The
 [full quickstart](docs/examples/01_quickstart.py) also holds out a test split
 and picks the smallest subset close to the best.
+
+### Choosing the score
+
+`Evaluator` scores a fitted model on your validation data, higher is better.
+Pick a metric by name. Keyword arguments go to the scikit-learn metric:
+
+```python
+Evaluator(X_val, y_val, "f1")                         # weighted F1 (the default)
+Evaluator(X_val, y_val, "f1", average="macro")
+Evaluator(X_val, y_val, "recall", average="binary", pos_label=0)
+Evaluator(X_val, y_val, "roc_auc")                    # uses predict_proba
+Evaluator(X_val, y_val, "r2")                         # regression
+Evaluator(X_val, y_val, "rmse")                       # errors are negated: -RMSE
+```
+
+The names are `f1`, `precision`, `recall`, `accuracy`, `balanced_accuracy`,
+`matthews`, `roc_auc`, `log_loss`, `r2`, `mae`, `mse` and `rmse`.
+
+For your own evaluator, start with the least code that does the job:
+
+```python
+# 1. Your own metric: a module-level function metric(y_true, y_pred)
+def f2(y_true, y_pred):
+    return fbeta_score(y_true, y_pred, beta=2)
+
+Evaluator(X_val, y_val, f2)            # greater_is_better=False for an error
+
+# 2. Your own scoring of the model: override score(); shuffling is handled
+class ConfidentAccuracy(Evaluator):
+    def score(self, model, X_eval):
+        proba = model.predict_proba(X_eval)
+        right = model.classes_[proba.argmax(axis=1)] == self.y_val
+        return float(np.mean(right & (proba.max(axis=1) >= 0.8)))
+
+# 3. From scratch: any picklable callable
+#    evaluator(model, genes, shuffle_indices=None) -> Result(score)
+```
+
+[Example 02](docs/examples/02_models_and_metrics.py) runs all of these, and the
+[reference](docs/reference.md#the-evaluator) gives the contract for writing one
+from scratch.
 
 ## 🛠 Installation
 
@@ -104,7 +137,8 @@ It is tested on Python 3.11 with numpy 2.4 and scikit-learn 1.9.
 ## 🔮 Features
 
 - **Any model, any score.** FASTENER fits your model and scores it with your
-  evaluator. It works for classification and, with a regression estimate of
+  evaluator: a built-in one for F1, precision, recall, accuracy, ROC AUC, R²,
+  RMSE and more, or your own. It works for classification and, with a regression estimate of
   mutual information, for [regression](docs/regression.md).
 - **A whole Pareto front per run.** The best subset of every size, not only one
   subset.
@@ -192,7 +226,14 @@ their results. Record each one in the [changelog](CHANGELOG.md).
 ## 🤝 Affiliations
 
 FASTENER is developed at the [Jožef Stefan Institute](https://www.ijs.si),
-Ljubljana, Slovenia.
+Ljubljana, Slovenia, within these projects:
+
+| Project | Funding | Grant |
+|---|---|---|
+| **PerceptiveSentinel**: big data knowledge extraction and re-creation platform for Copernicus Sentinel data | EU Horizon 2020 | [776115](https://cordis.europa.eu/project/id/776115) |
+| **NAIADES**: a holistic water ecosystem for digitisation of the urban water sector | EU Horizon 2020 | [820985](https://cordis.europa.eu/project/id/820985) |
+| **Plooto**: product passport through twinning of circular value chains | EU Horizon Europe | [101092008](https://cordis.europa.eu/project/id/101092008) |
+| **EnviroViroSeq**: advanced HTS and AI-powered analysis of viromes in hops and the environment | Slovenian Research and Innovation Agency (ARIS) | [J4-70162](https://cris.cobiss.net/ecris/si/en/project/24463) |
 
 ## 💬 Citation
 

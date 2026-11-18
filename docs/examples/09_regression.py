@@ -4,8 +4,8 @@ The search itself does not care about the task: it fits `model()` on a
 subset of columns and asks the evaluator for a score, higher is better. Two
 things change for a continuous target:
 
-1. The score. Use R^2, or a negated error (-RMSE, -MAE), so that higher
-   is better.
+1. The score. Use R^2, or an error: `Evaluator(X_val, y_val, "rmse")`
+   (or "mae", "mse") returns it negated, so that higher is still better.
 2. The mutual information. The information-gain mating strategies estimate
    MI with a *classification* estimator, which refuses a continuous target
    ("Unknown label type: continuous"). Either override
@@ -25,15 +25,15 @@ from sklearn.datasets import load_diabetes, make_friedman1
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.feature_selection import mutual_info_regression
 from sklearn.linear_model import RidgeCV
-from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
+from sklearn.metrics import r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
 
-import random_utils
+from evaluators import Evaluator
 from fastener import Config, EntropyOptimizer
 from item import (InformationGainSwapStrategy, IntersectionMating,
                   IntersectionMatingWithWeightedRandomInformationGain,
-                  RandomEveryoneWithEveryone, RandomFlipMutationStrategy, Result)
+                  RandomEveryoneWithEveryone, RandomFlipMutationStrategy)
 
 
 class RegressionMating(IntersectionMatingWithWeightedRandomInformationGain):
@@ -47,28 +47,6 @@ class RegressionMating(IntersectionMatingWithWeightedRandomInformationGain):
     def use_data_information(self, train_data, train_target):
         self.scikit_information_gain = mutual_info_regression(
             train_data, train_target, random_state=0)
-
-
-class RegressionEvaluator:
-    """Score a fitted regressor on the validation split, higher is better.
-
-    `score` is "r2", "neg_rmse" or "neg_mae". A class, not a closure, so
-    that it pickles (FASTENER pickles the optimizer before the search).
-    """
-    SCORES = {"r2": r2_score,
-              "neg_rmse": lambda y, p: -root_mean_squared_error(y, p),
-              "neg_mae": lambda y, p: -mean_absolute_error(y, p)}
-
-    def __init__(self, X_val, y_val, score="r2"):
-        self.X_val, self.y_val, self.score = X_val, y_val, score
-
-    def __call__(self, model, genes, shuffle_indices=None):
-        X_eval = self.X_val[:, genes]
-        if shuffle_indices:
-            X_eval = X_eval.copy()
-            for j in shuffle_indices:
-                random_utils.shuffle(X_eval[:, j])
-        return Result(self.SCORES[self.score](self.y_val, model.predict(X_eval)))
 
 
 X, y = make_friedman1(n_samples=2000, n_features=25, noise=1.0, random_state=0)
@@ -102,24 +80,24 @@ singles = [[i] for i in range(n)]
 # 1. A regression tree, R^2 on validation, regression MI in the mating.
 opt = search("tree_r2", partial(DecisionTreeRegressor, min_samples_leaf=5,
                                 random_state=0),
-             RegressionEvaluator(X_val, y_val, "r2"), initial_genes=singles)
+             Evaluator(X_val, y_val, "r2"), initial_genes=singles)
 
-# 2. Negative RMSE instead of R^2: the same ordering, in the target's units.
+# 2. RMSE (scored as -RMSE) instead of R^2: the same ordering, in the target's units.
 search("tree_neg_rmse", partial(DecisionTreeRegressor, min_samples_leaf=5,
                                 random_state=0),
-       RegressionEvaluator(X_val, y_val, "neg_rmse"), initial_genes=singles)
+       Evaluator(X_val, y_val, "rmse"), initial_genes=singles)
 
 # 3. No mutual information at all: plain intersection mating.
 search("tree_plain_intersection",
        partial(DecisionTreeRegressor, min_samples_leaf=5, random_state=0),
-       RegressionEvaluator(X_val, y_val), mating_strategy=IntersectionMating(),
+       Evaluator(X_val, y_val, "r2"), mating_strategy=IntersectionMating(),
        initial_genes=singles)
 
 # 4. A small forest with the guided swap (it reuses RegressionMating's MI).
 search("forest_swap",
        partial(RandomForestRegressor, n_estimators=30, min_samples_leaf=3,
                n_jobs=-1, random_state=0),
-       RegressionEvaluator(X_val, y_val), initial_genes=singles,
+       Evaluator(X_val, y_val, "r2"), initial_genes=singles,
        swap_strategy=InformationGainSwapStrategy(), max_model_fits=250)
 
 # 5. Seeds. mRMR's relevance is a classification estimator too, so it does
@@ -128,7 +106,7 @@ search("forest_swap",
 try:
     opt_b = search("tree_boruta_seed",
                    partial(DecisionTreeRegressor, min_samples_leaf=5),
-                   RegressionEvaluator(X_val, y_val), initial_genes=[[0]],
+                   Evaluator(X_val, y_val, "r2"), initial_genes=[[0]],
                    seed_filter="boruta", seed_size=8, boruta_max_iter=30)
     print("Boruta seed order:", opt_b.seed_ranking)
 except ImportError as e:
@@ -154,7 +132,7 @@ Xd_train, Xd_val, yd_train, yd_val = train_test_split(d.data, d.target,
                                                       random_state=0)
 nd = d.data.shape[1]
 opt_d = EntropyOptimizer(
-    RidgeCV, Xd_train, yd_train, RegressionEvaluator(Xd_val, yd_val), nd,
+    RidgeCV, Xd_train, yd_train, Evaluator(Xd_val, yd_val, "r2"), nd,
     RandomEveryoneWithEveryone(pool_size=3, mating_strategy=RegressionMating()),
     RandomFlipMutationStrategy(1 / nd), initial_genes=[[i] for i in range(nd)],
     config=Config(output_folder=run_folder("diabetes"), random_seed=8,

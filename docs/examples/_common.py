@@ -45,25 +45,3 @@ def classification_data(seed: int = 0):
     return (X_train, y_train, X_val, y_val, X_test, y_test,
             [str(n) for n in data.feature_names])
 
-
-class ValidationEvaluator:
-    """An evaluator scoring `score(y_true, y_pred)` on the validation split,
-    higher is better. Handles the permutation calls FASTENER makes while
-    pruning (`shuffle_indices` are positions among the selected columns).
-
-    A class rather than a closure: FASTENER pickles the optimizer, evaluator
-    included, to log/<folder>/experiment.pickle, and closures do not pickle.
-    """
-
-    def __init__(self, X_val, y_val, score):
-        self.X_val, self.y_val, self.score = X_val, y_val, score
-
-    def __call__(self, model, genes, shuffle_indices=None):
-        import random_utils
-        from item import Result
-        X_eval = self.X_val[:, genes]
-        if shuffle_indices:
-            X_eval = X_eval.copy()
-            for j in shuffle_indices:
-                random_utils.shuffle(X_eval[:, j])
-        return Result(self.score(self.y_val, model.predict(X_eval)))

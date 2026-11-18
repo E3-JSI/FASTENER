@@ -6,14 +6,11 @@ Modules, all importable once the FASTENER directory is on `sys.path`:
 |---|---|
 | `fastener` | `Config`, `EntropyOptimizer`, `FitBudgetExhausted`, `LogData` |
 | `item` | `Item`, `EvalItem`, `Result`; mating, selection, mutation and swap strategies |
+| `evaluators` | `Evaluator`, a ready-made evaluator for F1, precision, recall, accuracy, ROC AUC, R², RMSE and more |
 | `seeding` | the mRMR and Boruta filters behind `seed_filter` |
 | `guidance` | feature priors, subset proposers, `PriorGuidedMutationStrategy` |
 | `fast_mi` | `mutual_info_classif`, a faster drop-in for scikit-learn's |
 | `random_utils` | the random generator FASTENER draws from |
-
-Importing `fastener` also imports `dummy_data`, which builds a small
-synthetic data set for the module's own `main()`, and seeds numpy's global
-generator while doing so.
 
 ---
 
@@ -49,8 +46,41 @@ def evaluator(model, genes, shuffle_indices=None) -> Result
   negative.
 
 The evaluator is pickled with the optimizer: use a module-level function or
-a class with `__call__` (examples use `ValidationEvaluator` in
-[examples/_common.py](examples/_common.py)).
+a class with `__call__`, or the ready-made `evaluators.Evaluator` below.
+
+### `evaluators.Evaluator`
+
+```python
+Evaluator(X_val, y_val, metric="f1", *, greater_is_better=None,
+          use_proba=None, **metric_kwargs)
+```
+
+An evaluator for the common metrics. It predicts on the selected validation
+columns, shuffles the columns FASTENER asks for during pruning (a copy, with
+`random_utils.shuffle`), and returns `Result(score)`.
+
+| `metric` | Score | Defaults |
+|---|---|---|
+| `"f1"`, `"precision"`, `"recall"` | scikit-learn's score | `average="weighted"` (`zero_division=0` for precision and recall) |
+| `"accuracy"`, `"balanced_accuracy"`, `"matthews"` | scikit-learn's score | |
+| `"roc_auc"` | from `predict_proba`; binary: the positive class, multiclass: one-vs-rest | |
+| `"log_loss"` | −log loss, from `predict_proba` | |
+| `"r2"` | R² | |
+| `"mae"`, `"mse"`, `"rmse"` | the error, negated | |
+| a function | `metric(y_true, y_pred)` | |
+
+* `**metric_kwargs` go to the metric and override its defaults, e.g.
+  `average="macro"`, or `average="binary", pos_label=0`.
+* `greater_is_better=False` negates a function metric (an error).
+  `use_proba=True` passes it `model.predict_proba(X)`. Named metrics know
+  both already, and passing either with a name is an error.
+* A function metric must be defined at module level, so that it pickles.
+* To score the model your own way, subclass and override
+  `score(self, model, X_eval) -> float`. `X_eval` holds the selected (and,
+  for permutation calls, shuffled) validation columns, `self.y_val` the
+  targets. The shuffling stays handled.
+* `evaluators.METRICS` lists the names, with each metric's function,
+  direction and defaults.
 
 ---
 

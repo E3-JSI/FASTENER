@@ -51,7 +51,9 @@ prior with `"initial"` in `prior_uses`.
 ### `IndexError` or wrong scores in the evaluator during pruning
 
 `shuffle_indices` are positions among the *selected* columns of
-`X_val[:, genes]`, not original feature indices.
+`X_val[:, genes]`, not original feature indices. `evaluators.Evaluator`
+handles them for you. If you need your own scoring, subclass it and override
+`score(model, X_eval)`, which receives the columns already shuffled.
 
 ## Behaviour that surprises
 
@@ -90,8 +92,7 @@ with contextlib.redirect_stdout(io.StringIO()):
 `mainloop` changes the run. That includes another `Config`, an evaluator
 shuffling with `np.random` in some other order, or a model that uses the
 global generator. Create the `Config` right before the optimizer and draw
-only through `random_utils`. Importing `fastener` also seeds the generator
-(through `dummy_data`), so import it before your own seeding.
+only through `random_utils`.
 
 ### Runs with old and new defaults are not comparable
 

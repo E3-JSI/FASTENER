@@ -1,8 +1,8 @@
 """Quickstart: select features for a classifier on the breast-cancer data.
 
 The minimum FASTENER needs: a model factory, training data, an evaluator
-that scores a fitted model on validation data, a mating and a mutation
-strategy, and somewhere to start.
+that scores a fitted model on validation data (`evaluators.Evaluator`), a
+mating and a mutation strategy, and somewhere to start.
 """
 from _common import run_folder, front_table  # noqa: F401  (sets sys.path)
 
@@ -12,11 +12,10 @@ from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 
+from evaluators import Evaluator
 from fastener import Config, EntropyOptimizer
 from item import (IntersectionMatingWithWeightedRandomInformationGain,
-                  RandomEveryoneWithEveryone, RandomFlipMutationStrategy,
-                  Result)
-import random_utils
+                  RandomEveryoneWithEveryone, RandomFlipMutationStrategy)
 
 data = load_breast_cancer()
 X, y = data.data, data.target
@@ -29,21 +28,10 @@ X_rest, X_test, y_rest, y_test = train_test_split(
 X_train, X_val, y_train, y_val = train_test_split(
     X_rest, y_rest, test_size=1 / 3, stratify=y_rest, random_state=0)
 
-
-def evaluator(model, genes, shuffle_indices=None):
-    """Score `model` (fitted on X_train[:, genes]) on the validation split.
-
-    FASTENER also calls it with `shuffle_indices` to measure permutation
-    importance: those are positions among the *selected* columns, whose
-    values must be shuffled before predicting.
-    """
-    X_eval = X_val[:, genes]
-    if shuffle_indices:
-        X_eval = X_eval.copy()
-        for j in shuffle_indices:
-            random_utils.shuffle(X_eval[:, j])
-    return Result(f1_score(y_val, model.predict(X_eval), average="weighted"))
-
+# The evaluator scores a fitted model on the validation split: here the
+# weighted F1 (the default). See 02_models_and_metrics.py for other metrics
+# and for writing your own.
+evaluator = Evaluator(X_val, y_val, "f1")
 
 n_features = X.shape[1]
 optimizer = EntropyOptimizer(
